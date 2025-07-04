@@ -1,0 +1,36 @@
+{
+    "name": "cibo",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "features":{
+        "ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {
+            "setLocale": true,
+            "theme": "robbyrussell",
+            "plugins": "git docker",
+            "desiredLocale": "en_US.UTF-8 UTF-8"
+        }
+    },
+    "workspaceFolder": "/workspaces/cibo",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "tamasfe.even-better-toml",
+                "golang.Go",
+                "DavidAnson.vscode-markdownlint",
+                "streetsidesoftware.code-spell-checker",
+                "aaron-bond.better-comments"
+            ],
+            "settings": {
+                "go.gopath": "/go",
+                "terminal.integrated.shell.linux": "zsh",
+                "terminal.integrated.profiles.linux": {
+                    "zsh": {
+                        "path": "zsh"
+                    }
+                }
+            }
+        }
+    },
+    "forwardPorts": [3000]
+}
