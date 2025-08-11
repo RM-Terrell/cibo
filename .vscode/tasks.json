@@ -2,33 +2,11 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run Go Tests (statistics_engine_go)",
+            "label": "Run Go Tests (go_statistics_engine)",
             "type": "shell",
             "command": "go test ./...",
             "options": {
-                "cwd": "${workspaceFolder}/src/statistics_engine_go"
-            },
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            },
-            "problemMatcher": [
-                "$go"
-            ]
-        }, {
-            "label": "Run Go Tests (server)",
-            "type": "shell",
-            "command": "go test ./...",
-            "options": {
-                "cwd": "${workspaceFolder}/src/server"
+                "cwd": "${workspaceFolder}/src/stats_engine_go"
             },
             "group": {
                 "kind": "test",

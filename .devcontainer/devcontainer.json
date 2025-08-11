@@ -19,7 +19,10 @@
                 "golang.Go",
                 "DavidAnson.vscode-markdownlint",
                 "streetsidesoftware.code-spell-checker",
-                "aaron-bond.better-comments"
+                "aaron-bond.better-comments",
+                "ms-toolsai.datawrangler",
+                "ms-toolsai.jupyter",
+                "ms-python.python"
             ],
             "settings": {
                 "go.gopath": "/go",
@@ -31,6 +34,9 @@
                 }
             }
         }
+    },
+        "containerEnv": {
+        "API_KEYS_CONFIG_PATH": "/workspaces/cibo/src/stats_engine/keys/api_keys.toml"
     },
     "forwardPorts": [3000]
 }
