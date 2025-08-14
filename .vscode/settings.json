@@ -1,0 +1,10 @@
+{
+    // This setting kicks the Python extension in the shins at editor launch
+    // so that you don't have to manually specify the venv path setup by the 
+    // Dockerfile and devcontainer.json settings
+    "python.defaultInterpreterPath": "/opt/venv/bin/python",
+    "workbench.editorAssociations": {
+        "*.ipynb": "jupyter-notebook",
+        "file:/**/*.parquet": "jupyter-data-wrangler"
+    }
+}

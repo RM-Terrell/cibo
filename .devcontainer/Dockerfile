@@ -12,10 +12,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     build-essential \
+    # python, pip, venv, ipykernel, pyarrow, and pandas are all installed for Data Wrangler to work
     python3 \
     python3-pip \
-    python3-venv \
-    python3-ipykernel
+    python3-venv
 
 ENV VENV_PATH=/opt/venv
 RUN python3 -m venv $VENV_PATH
@@ -25,16 +25,21 @@ RUN pip install --no-cache-dir ipykernel pyarrow pandas
 
 RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-arm64.tar.gz" | tar -C /usr/local -xz
 
+WORKDIR /app
+COPY src/stats_engine/go.mod src/stats_engine/go.sum ./
+RUN go mod download
+
 RUN go install golang.org/x/tools/gopls@latest \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install github.com/go-delve/delve/cmd/dlv@latest
 
 RUN rm -rf /var/lib/apt/lists/*
 
-# TODO will probably need a go get step in here to install go project dependencies of the project
-
 RUN useradd -ms /bin/bash vscode
+# need to provide perms on /go or else vscode go extensions wont work
 RUN chown -R vscode:vscode /go
+# need to provide perms on /venv or else vscode Python extensions wont be able to read the venv
+RUN chown -R vscode:vscode /opt/venv
 USER vscode
 
 WORKDIR /workspaces

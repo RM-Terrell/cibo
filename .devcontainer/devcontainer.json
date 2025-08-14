@@ -1,7 +1,10 @@
 {
     "name": "cibo",
     "build": {
-        "dockerfile": "Dockerfile"
+        "dockerfile": "Dockerfile",
+        // set the build context to the parent of .devcontainer so relative paths
+        // when specifying "go mod download" work
+        "context": ".."
     },
     "features":{
         "ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {
@@ -26,6 +29,7 @@
             ],
             "settings": {
                 "go.gopath": "/go",
+                "python.defaultInterpreterPath": "/opt/venv/bin/python",
                 "terminal.integrated.shell.linux": "zsh",
                 "terminal.integrated.profiles.linux": {
                     "zsh": {
