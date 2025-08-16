@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"stats_engine/api"
 	"stats_engine/io"
+	"stats_engine/parse"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -91,12 +92,12 @@ func (m model) Init() tea.Cmd {
 // --- Functionality Commands ---
 // Run the entire stock price data pipeline.
 func (m model) processDataCmd() tea.Msg {
-	jsonData, err := m.apiClient.FetchStockData(m.inputs[0].Value())
+	jsonData, err := m.apiClient.FetchDailyStockData(m.inputs[0].Value())
 	if err != nil {
 		return processErrorMsg{err: fmt.Errorf("API fetch failed: %w", err)}
 	}
 
-	records, err := api.ParseToFlat(jsonData, true)
+	records, err := parse.ParseToFlat(jsonData, true)
 	if err != nil {
 		return processErrorMsg{err: fmt.Errorf("parsing failed: %w", err)}
 	}

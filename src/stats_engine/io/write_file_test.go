@@ -2,9 +2,9 @@ package io
 
 import (
 	"path/filepath"
-	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/reader"
 
@@ -47,8 +47,9 @@ func TestWriteToParquet(t *testing.T) {
 			t.Fatalf("Failed to create ParquetReader: %v", err)
 		}
 
-		if pr.GetNumRows() != int64(len(sampleRecords)) {
-			t.Fatalf("Expected %d records, but file has %d", len(sampleRecords), pr.GetNumRows())
+		expectedRows := int64(len(sampleRecords))
+		if diff := cmp.Diff(expectedRows, pr.GetNumRows()); diff != "" {
+			t.Fatalf("WriteToParquet() row count mismatch (-want +got):\n%s", diff)
 		}
 
 		readRecords := make([]types.FlatStockRecord, len(sampleRecords))
@@ -56,8 +57,8 @@ func TestWriteToParquet(t *testing.T) {
 			t.Fatalf("Failed to read records from ParquetReader: %v", err)
 		}
 
-		if !reflect.DeepEqual(sampleRecords, readRecords) {
-			t.Errorf("Written records do not match read records.\nWant: %+v\nGot:  %+v", sampleRecords, readRecords)
+		if diff := cmp.Diff(sampleRecords, readRecords); diff != "" {
+			t.Errorf("WriteToParquet() record mismatch (-want +got):\n%s", diff)
 		}
 	})
 
@@ -82,7 +83,6 @@ func TestWriteToParquet(t *testing.T) {
 			t.Fatalf("WriteToParquet with empty slice returned an error: %v", writeErr)
 		}
 
-		// Expecting to read zero records
 		fr, err := local.NewLocalFileReader(filePath)
 		if err != nil {
 			t.Fatalf("Failed to create local file reader for empty file: %v", err)
@@ -94,8 +94,9 @@ func TestWriteToParquet(t *testing.T) {
 			t.Fatalf("Failed to create ParquetReader for empty file: %v", err)
 		}
 
-		if pr.GetNumRows() != 0 {
-			t.Errorf("Expected 0 rows for empty input, but got %d", pr.GetNumRows())
+		expectedRows := int64(0)
+		if diff := cmp.Diff(expectedRows, pr.GetNumRows()); diff != "" {
+			t.Errorf("WriteToParquet() empty slice row count mismatch (-want +got):\n%s", diff)
 		}
 	})
 }

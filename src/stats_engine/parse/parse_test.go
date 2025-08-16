@@ -1,4 +1,4 @@
-package api
+package parse
 
 import (
 	"fmt"
@@ -30,12 +30,15 @@ func TestParseToFlat(t *testing.T) {
 
 		records, err := ParseToFlat(jsonData, false)
 		if err != nil {
-			t.Fatalf("ParseToFlat() returned an unexpected error: %v", err)
+			t.Fatalf(`ParseToFlat() returned an unexpected error: %v`, err)
 		}
 
 		expectedLen := 2
 		if len(records) != expectedLen {
-			t.Fatalf("Expected %d records, but got %d", expectedLen, len(records))
+			t.Fatalf(`
+				Expected %d records
+				Got %d`,
+				expectedLen, len(records))
 		}
 
 		resultsMap := make(map[string]types.FlatStockRecord)
@@ -44,21 +47,30 @@ func TestParseToFlat(t *testing.T) {
 		}
 
 		if rec, ok := resultsMap[date1]; !ok {
-			t.Errorf("Expected record for date %s not found", date1)
+			t.Errorf(`Expected record for date %s not found`, date1)
 		} else {
 			if rec.Ticker != ticker {
-				t.Errorf("Expected ticker '%s', got '%s'", ticker, rec.Ticker)
+				t.Errorf(`
+					Expected ticker '%s'
+					Got '%s'`,
+					ticker, rec.Ticker)
 			}
 			if rec.ClosingPrice != price1Float {
-				t.Errorf("Expected closing price %f, got %f", price1Float, rec.ClosingPrice)
+				t.Errorf(`
+					Expected closing price %f
+					Got %f`,
+					price1Float, rec.ClosingPrice)
 			}
 		}
 
 		if rec, ok := resultsMap[date2]; !ok {
-			t.Errorf("Expected record for date %s not found", date2)
+			t.Errorf(`Expected record for date %s not found`, date2)
 		} else {
 			if rec.ClosingPrice != price2Float {
-				t.Errorf("Expected closing price %f, got %f", price2Float, rec.ClosingPrice)
+				t.Errorf(`
+					Expected closing price %f
+					Got %f`,
+					price2Float, rec.ClosingPrice)
 			}
 		}
 	})
@@ -67,7 +79,7 @@ func TestParseToFlat(t *testing.T) {
 		jsonData := []byte(`{ "Meta Data": "invalid }`)
 		_, err := ParseToFlat(jsonData, false)
 		if err == nil {
-			t.Fatal("Expected an error for malformed JSON, but got nil")
+			t.Fatal(`Expected an error for malformed JSON, but got nil`)
 		}
 	})
 
@@ -78,10 +90,13 @@ func TestParseToFlat(t *testing.T) {
 		}`)
 		_, err := ParseToFlat(jsonData, false)
 		if err == nil {
-			t.Fatal("Expected an error for missing ticker, but got nil")
+			t.Fatal(`Expected an error for missing ticker, but got nil`)
 		}
 		if !strings.Contains(err.Error(), "ticker not found") {
-			t.Errorf("Expected error message to contain 'ticker not found', got: %v", err)
+			t.Errorf(`
+				Expected error message to contain 'ticker not found'
+				Got: %v`,
+				err)
 		}
 	})
 
@@ -101,10 +116,13 @@ func TestParseToFlat(t *testing.T) {
 		// skipErrors being false is an important distinction in this test, and should result in error return
 		_, err := ParseToFlat(jsonData, false)
 		if err == nil {
-			t.Fatal("Expected an error for invalid closing price, but got nil")
+			t.Fatal(`Expected an error for invalid closing price, but got nil`)
 		}
 		if !strings.Contains(err.Error(), "could not parse close price") {
-			t.Errorf("Expected error message to contain 'could not parse close price', got: %v", err)
+			t.Errorf(`
+				Expected error message to contain 'could not parse close price'
+				Got: %v`,
+				err)
 		}
 	})
 
@@ -130,12 +148,18 @@ func TestParseToFlat(t *testing.T) {
 		// skipErrors being true is an important distinction in this test, and should NOT result in error return
 		records, err := ParseToFlat(jsonData, true)
 		if err != nil {
-			t.Fatalf("Expected no error when skipping, but got: %v", err)
+			t.Fatalf(`
+				Expected no error when skipping
+				Got: %v`,
+				err)
 		}
 
 		expectedLen := 2
 		if len(records) != expectedLen {
-			t.Fatalf("Expected %d records after skipping, but got %d", expectedLen, len(records))
+			t.Fatalf(`
+				Expected %d records after skipping
+				Got %d`,
+				expectedLen, len(records))
 		}
 
 		resultsMap := make(map[string]types.FlatStockRecord)
@@ -144,13 +168,13 @@ func TestParseToFlat(t *testing.T) {
 		}
 
 		if _, ok := resultsMap[badDate]; ok {
-			t.Errorf("The invalid record for date %s should have been skipped", badDate)
+			t.Errorf(`The invalid record for date %s should have been skipped`, badDate)
 		}
 		if _, ok := resultsMap[goodDate1]; !ok {
-			t.Errorf("The valid record for date %s is missing", goodDate1)
+			t.Errorf(`The valid record for date %s is missing`, goodDate1)
 		}
 		if _, ok := resultsMap[goodDate2]; !ok {
-			t.Errorf("The valid record for date %s is missing", goodDate2)
+			t.Errorf(`The valid record for date %s is missing`, goodDate2)
 		}
 	})
 
@@ -163,10 +187,16 @@ func TestParseToFlat(t *testing.T) {
 
 		records, err := ParseToFlat(jsonData, false)
 		if err != nil {
-			t.Fatalf("Expected no error for empty time series, but got: %v", err)
+			t.Fatalf(`
+				Expected no error for empty time series
+				Got: %v`,
+				err)
 		}
 		if len(records) != 0 {
-			t.Errorf("Expected 0 records for empty time series, but got %d", len(records))
+			t.Errorf(`
+				Expected 0 records for empty time series
+				Got %d`,
+				len(records))
 		}
 	})
 }

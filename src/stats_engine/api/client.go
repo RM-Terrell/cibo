@@ -21,9 +21,9 @@ func NewClient(apiKey string) *Client {
 	}
 }
 
-// FetchStockData retrieves the raw daily time series data for a given stock symbol.
-// It returns the raw response body as a byte slice, ready for parsing.
-func (c *Client) FetchStockData(symbol string) ([]byte, error) {
+// FetchDailyStockData retrieves the raw daily time series data for a given stock symbol.
+// It returns the raw response body as a byte slice
+func (c *Client) FetchDailyStockData(symbol string) ([]byte, error) {
 	url := fmt.Sprintf(
 		"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=%s&apikey=%s&outputsize=full",
 		symbol,
