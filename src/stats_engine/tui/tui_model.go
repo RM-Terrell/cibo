@@ -92,7 +92,7 @@ func (m model) Init() tea.Cmd {
 // --- Functionality Commands ---
 // Run the entire stock price data pipeline.
 func (m model) processDataCmd() tea.Msg {
-	jsonData, err := m.apiClient.FetchDailyStockData(m.inputs[0].Value())
+	jsonData, err := m.apiClient.FetchDailyPrice(m.inputs[0].Value())
 	if err != nil {
 		return processErrorMsg{err: fmt.Errorf("API fetch failed: %w", err)}
 	}
