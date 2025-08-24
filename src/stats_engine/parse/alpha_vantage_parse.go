@@ -1,0 +1,118 @@
+package parse
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"strconv"
+
+	"stats_engine/types"
+)
+
+/*
+Parsing module to handle data structures coming back from AlphaVantage.
+Hard tied to their data structures, any changes to their API will
+require changes here too.
+*/
+
+type DailyPricesResponse struct {
+	MetaData   MetaDataContainer         `json:"Meta Data"`
+	TimeSeries map[string]DailyDataPoint `json:"Time Series (Daily)"`
+}
+
+type MetaDataContainer struct {
+	Symbol string `json:"2. Symbol"`
+}
+
+type DailyDataPoint struct {
+	Close string `json:"4. close"`
+}
+
+/*
+Function to take json data of daily prices and parse it into a collection
+of individual stock prices.
+*/
+func ParseDailyPricesToFlat(jsonData []byte, skipErrors bool) ([]types.FlatStockRecord, error) {
+	var response DailyPricesResponse
+
+	if err := json.Unmarshal(jsonData, &response); err != nil {
+		return nil, fmt.Errorf("error unmarshaling json: %w", err)
+	}
+
+	ticker := response.MetaData.Symbol
+	if ticker == "" {
+		return nil, fmt.Errorf("ticker not found in JSON Meta Data when parsing")
+	}
+
+	records := make([]types.FlatStockRecord, 0, len(response.TimeSeries))
+
+	for rawDate, rawDataPoint := range response.TimeSeries {
+		closingPrice, err := strconv.ParseFloat(rawDataPoint.Close, 64)
+		if err != nil {
+			if skipErrors {
+				log.Printf("Warning: could not parse close price for date %s, skipping record. Error: %v", rawDate, err)
+				continue
+			}
+			return nil, fmt.Errorf("could not parse close price '%s' for date %s: %w", rawDataPoint.Close, rawDate, err)
+		}
+
+		records = append(records, types.FlatStockRecord{
+			Ticker:       ticker,
+			Date:         rawDate,
+			ClosingPrice: closingPrice,
+		})
+	}
+
+	return records, nil
+}
+
+type AnnualEarningResponse struct {
+	Symbol         string          `json:"symbol"`
+	AnnualEarnings []AnnualEarning `json:"annualEarnings"`
+}
+
+type AnnualEarning struct {
+	FiscalDateEnding string `json:"fiscalDateEnding"`
+	ReportedEPS      string `json:"reportedEPS"`
+	EstimatedEPS     string `json:"estimatedEPS"`
+	Surprise         string `json:"surprise"`
+}
+
+// Function to take json data of annual earnings and parse it into a collection
+// of individual annual earnings data points.
+func ParseAnnualEarningsToFlat(jsonData []byte, skipErrors bool) ([]types.FlatAnnualEarnings, error) {
+	var response AnnualEarningResponse
+
+	if err := json.Unmarshal(jsonData, &response); err != nil {
+		return nil, fmt.Errorf("error unmarshaling json: %w", err)
+	}
+
+	ticker := response.Symbol
+	if ticker == "" {
+		return nil, fmt.Errorf("ticker not found in JSON when parsing")
+	}
+
+	records := make([]types.FlatAnnualEarnings, 0, len(response.AnnualEarnings))
+
+	for _, earnings := range response.AnnualEarnings {
+		fiscalDateEnding := earnings.FiscalDateEnding
+		reportedEPS, epsParseError := strconv.ParseFloat(earnings.ReportedEPS, 64)
+		if epsParseError != nil {
+			if skipErrors {
+				log.Printf("Warning: could not parse reported EPS for date %s, skipping record. Error: %v",
+					fiscalDateEnding, epsParseError)
+				continue
+			}
+			return nil, fmt.Errorf("could not parse reported EPS for date %s: %w",
+				fiscalDateEnding, epsParseError)
+		}
+
+		records = append(records, types.FlatAnnualEarnings{
+			Ticker:           ticker,
+			FiscalDateEnding: fiscalDateEnding,
+			ReportedEPS:      reportedEPS,
+		})
+	}
+
+	return records, nil
+}

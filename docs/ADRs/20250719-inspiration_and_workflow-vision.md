@@ -51,3 +51,7 @@ Go comes with async network call support, multiprocessing support, and good unit
 ![cibo](../images/cibo.jpeg)
 
 I like naming projects after thematically appropriate fictional characters. If I call this thing "Golang React Stock Plotter" first of all thats lame. Second of all if one day I switch tech to use Rust, convert it to a pure CLI application that uses ASCII, and plot Furby prices with it, the name will age pretty bad. Cibo will always be a cool name.
+
+## August 2025 addendum
+
+Additional resources on free data endpoints possibly useful for this project can be found [in this repo](https://github.com/toddmotto/public-apis?tab=readme-ov-file#finance)

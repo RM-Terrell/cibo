@@ -14,6 +14,15 @@ import (
 	"github.com/xitongsys/parquet-go-source/local"
 )
 
+/*
+The goal of this module is to act as the primary control point for the Terminal UI
+
+layer, powered by the Bubble Tea library. This library functions via a model (state),
+update, view system that should be familiar to anyone whose worked with Redux or a similar
+UI library / framework system.
+
+Docs on Bubble Tea can be found here: github.com/charmbracelet/bubbletea
+*/
 var (
 	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	blurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
@@ -70,14 +79,17 @@ func NewModel(client *api.Client) model {
 			t.Focus()
 			t.Prompt = "Stock Ticker: "
 			t.CharLimit = 5
+			t.Width = 5
 		case 1:
 			t.Placeholder = "YYYY-MM-DD"
 			t.Prompt = "Start Date:   "
 			t.CharLimit = 10
+			t.Width = 10
 		case 2:
 			t.Placeholder = "YYYY-MM-DD"
 			t.Prompt = "End Date:     "
 			t.CharLimit = 10
+			t.Width = 10
 		}
 		m.inputs[i] = t
 	}
@@ -92,28 +104,43 @@ func (m model) Init() tea.Cmd {
 // --- Functionality Commands ---
 // Run the entire stock price data pipeline.
 func (m model) processDataCmd() tea.Msg {
-	jsonData, err := m.apiClient.FetchDailyPrice(m.inputs[0].Value())
-	if err != nil {
-		return processErrorMsg{err: fmt.Errorf("API fetch failed: %w", err)}
+	ticker := m.inputs[0].Value()
+
+	dailyPricesJson, dailyFetchErr := m.apiClient.FetchDailyPrice(ticker)
+	if dailyFetchErr != nil {
+		return processErrorMsg{err: fmt.Errorf("daily prices API fetch failed: %w", dailyFetchErr)}
 	}
 
-	records, err := parse.ParseToFlat(jsonData, true)
-	if err != nil {
-		return processErrorMsg{err: fmt.Errorf("parsing failed: %w", err)}
+	annualEarningsJson, annualEarningsFetchErr := m.apiClient.FetchEarnings(ticker)
+	if annualEarningsFetchErr != nil {
+		return processErrorMsg{err: fmt.Errorf("annual earnings API fetch failed: %w", annualEarningsFetchErr)}
 	}
 
-	fileName := fmt.Sprintf("%s.parquet", m.inputs[0].Value())
+	dailyPricesRecords, dailyParseErr := parse.ParseDailyPricesToFlat(dailyPricesJson, true)
+	if dailyParseErr != nil {
+		return processErrorMsg{err: fmt.Errorf("daily prices parsing failed: %w", dailyParseErr)}
+	}
+
+	// todo "_"
+	_, annualEarningsParseErr := parse.ParseAnnualEarningsToFlat(annualEarningsJson, true)
+	if annualEarningsParseErr != nil {
+		return processErrorMsg{err: fmt.Errorf("annual earnings parsing failed: %w", annualEarningsParseErr)}
+	}
+
+	fileName := fmt.Sprintf("%s.parquet", ticker)
 	fw, err := local.NewLocalFileWriter(fileName)
 	if err != nil {
 		return processErrorMsg{err: fmt.Errorf("failed to create file '%s': %w", fileName, err)}
 	}
 	defer fw.Close()
 
-	if err := io.WriteToParquet(records, fw); err != nil {
+	if err := io.WriteToParquet(dailyPricesRecords, fw); err != nil {
 		return processErrorMsg{err: fmt.Errorf("failed to write parquet data: %w", err)}
 	}
 
-	return processSuccessMsg{recordCount: len(records), fileName: fileName}
+	// todo write fair value price data to parquet file too
+
+	return processSuccessMsg{recordCount: len(dailyPricesRecords), fileName: fileName}
 }
 
 // --- Bubbletea Update ---

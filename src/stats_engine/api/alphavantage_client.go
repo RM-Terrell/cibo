@@ -7,6 +7,15 @@ import (
 	"time"
 )
 
+/*
+The purpose of this module is to act as the communication layer for grabbing stock data
+using the Alphavantage API. All URLs will be to alphavantage and this layer should act
+purely to return raw byte data to be parsed elsewhere. The goal there being to act on a
+consistent contract thus making API swapping in the future a little less painful.
+
+Alphavantage API docs can be found here: https://www.alphavantage.co/documentation/#
+*/
+
 type Client struct {
 	apiKey     string
 	httpClient *http.Client
@@ -23,6 +32,22 @@ func NewClient(apiKey string) *Client {
 
 // Retrieve the raw daily time series data for a given stock symbol.
 func (c *Client) FetchDailyPrice(symbol string) ([]byte, error) {
+	// {
+	// "Meta Data": {
+	//     "1. Information": "Daily Prices (open, high, low, close) and Volumes",
+	//     "2. Symbol": "IBM",
+	//     "3. Last Refreshed": "2025-08-22",
+	//     "4. Output Size": "Compact",
+	//     "5. Time Zone": "US/Eastern"
+	// },
+	// "Time Series (Daily)": {
+	//     "2025-08-22": {
+	//         "1. open": "240.7400",
+	//         "2. high": "243.6800",
+	//         "3. low": "240.2200",
+	//         "4. close": "242.0900",
+	//         "5. volume": "3134882"
+	//     },
 	url := fmt.Sprintf(
 		"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=%s&apikey=%s&outputsize=full",
 		symbol,

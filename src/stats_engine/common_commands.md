@@ -14,6 +14,12 @@ VS Code Command Palette -> Run Task -> Run Go Tests (data_engine). This is confi
 dlv
 ```
 
+## Unit testing
+
+As part of dev container setup there should be a unit testing extension installed that will both add a "Testing" flask icon on the left side of the editor from which you can run tests, and also add an overlay on unit test code for "run" and "debug" to run them right from the code with one click.
+
+**CURRENT ISSUE**: There is currently a quirk in the unit testing extension where you must highlight the text name value (between the double quotes) of the unit test in order for the inline "run" and "debug" buttons to run the desired test. I think this is an issue with how I structured and named the tests causing the extension to be confused. The left side panel Testing bit works perfectly though.
+
 ## Checking coverage
 
 In vscode make sure you have

@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"stats_engine/types"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestParseToFlat(t *testing.T) {
@@ -28,7 +30,7 @@ func TestParseToFlat(t *testing.T) {
 			}
 		}`, ticker, date1, price1Str, date2, price2Str)
 
-		records, err := ParseToFlat(jsonData, false)
+		records, err := ParseDailyPricesToFlat(jsonData, false)
 		if err != nil {
 			t.Fatalf(`ParseToFlat() returned an unexpected error: %v`, err)
 		}
@@ -77,7 +79,7 @@ func TestParseToFlat(t *testing.T) {
 
 	t.Run("Given malformed json data, verify that the parser returns an error", func(t *testing.T) {
 		jsonData := []byte(`{ "Meta Data": "invalid }`)
-		_, err := ParseToFlat(jsonData, false)
+		_, err := ParseDailyPricesToFlat(jsonData, false)
 		if err == nil {
 			t.Fatal(`Expected an error for malformed JSON, but got nil`)
 		}
@@ -88,7 +90,7 @@ func TestParseToFlat(t *testing.T) {
 			"Meta Data": { "1. Information": "Some info" },
 			"Time Series (Daily)": {}
 		}`)
-		_, err := ParseToFlat(jsonData, false)
+		_, err := ParseDailyPricesToFlat(jsonData, false)
 		if err == nil {
 			t.Fatal(`Expected an error for missing ticker, but got nil`)
 		}
@@ -114,7 +116,7 @@ func TestParseToFlat(t *testing.T) {
 		}`, ticker, date, badPrice)
 
 		// skipErrors being false is an important distinction in this test, and should result in error return
-		_, err := ParseToFlat(jsonData, false)
+		_, err := ParseDailyPricesToFlat(jsonData, false)
 		if err == nil {
 			t.Fatal(`Expected an error for invalid closing price, but got nil`)
 		}
@@ -146,7 +148,7 @@ func TestParseToFlat(t *testing.T) {
 		}`, ticker, goodDate1, goodPrice1, badDate, badPrice, goodDate2, goodPrice2)
 
 		// skipErrors being true is an important distinction in this test, and should NOT result in error return
-		records, err := ParseToFlat(jsonData, true)
+		records, err := ParseDailyPricesToFlat(jsonData, true)
 		if err != nil {
 			t.Fatalf(`
 				Expected no error when skipping
@@ -185,7 +187,7 @@ func TestParseToFlat(t *testing.T) {
 			"Time Series (Daily)": {}
 		}`, ticker)
 
-		records, err := ParseToFlat(jsonData, false)
+		records, err := ParseDailyPricesToFlat(jsonData, false)
 		if err != nil {
 			t.Fatalf(`
 				Expected no error for empty time series
@@ -197,6 +199,144 @@ func TestParseToFlat(t *testing.T) {
 				Expected 0 records for empty time series
 				Got %d`,
 				len(records))
+		}
+	})
+}
+
+func TestParseAnnualEarningsToFlat(t *testing.T) {
+	t.Run("Given valid json, should parse all records correctly", func(t *testing.T) {
+		const (
+			ticker    = "IBM"
+			date1     = "2025-06-30"
+			eps1Str   = "4.40"
+			eps1Float = 4.40
+			date2     = "2024-06-30"
+			eps2Str   = "4.15"
+			eps2Float = 4.15
+		)
+
+		jsonData := []byte(fmt.Sprintf(`{
+			"symbol": "%s",
+			"annualEarnings": [
+				{
+					"fiscalDateEnding": "%s",
+					"reportedEPS": "%s"
+				},
+				{
+					"fiscalDateEnding": "%s",
+					"reportedEPS": "%s"
+				}
+			]
+		}`, ticker, date1, eps1Str, date2, eps2Str))
+
+		expected := []types.FlatAnnualEarnings{
+			{Ticker: ticker, FiscalDateEnding: date1, ReportedEPS: eps1Float},
+			{Ticker: ticker, FiscalDateEnding: date2, ReportedEPS: eps2Float},
+		}
+
+		records, err := ParseAnnualEarningsToFlat(jsonData, false)
+		if err != nil {
+			t.Fatalf("ParseAnnualEarningsToFlat() returned an unexpected error: %v", err)
+		}
+
+		if diff := cmp.Diff(expected, records); diff != "" {
+			t.Errorf("ParseAnnualEarningsToFlat() mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("Given malformed json, should return an unmarshaling error", func(t *testing.T) {
+		jsonData := []byte(`{"symbol": "IBM", "annualEarnings": [ { "fiscalDateEnding": "2025-06-30" ]}`) // Missing closing brace
+
+		_, err := ParseAnnualEarningsToFlat(jsonData, false)
+		if err == nil {
+			t.Fatal("Expected an error for malformed JSON, but got nil")
+		}
+		if !strings.Contains(err.Error(), "unmarshaling") {
+			t.Errorf("Expected error message to contain 'unmarshaling', but got: %v", err)
+		}
+	})
+
+	t.Run("Given json with a missing ticker, should return an error", func(t *testing.T) {
+		jsonData := []byte(`{
+			"annualEarnings": [
+				{ "fiscalDateEnding": "2025-06-30", "reportedEPS": "4.40" }
+			]
+		}`)
+
+		_, err := ParseAnnualEarningsToFlat(jsonData, false)
+		if err == nil {
+			t.Fatal("Expected an error for missing ticker, but got nil")
+		}
+		if !strings.Contains(err.Error(), "ticker not found") {
+			t.Errorf("Expected error message to contain 'ticker not found', but got: %v", err)
+		}
+	})
+
+	t.Run("Given a non-numeric EPS with strict error mode, should return a parsing error", func(t *testing.T) {
+		const ticker = "IBM"
+		jsonData := []byte(fmt.Sprintf(`{
+			"symbol": "%s",
+			"annualEarnings": [
+				{ "fiscalDateEnding": "2025-06-30", "reportedEPS": "N/A" }
+			]
+		}`, ticker))
+
+		_, err := ParseAnnualEarningsToFlat(jsonData, false)
+		if err == nil {
+			t.Fatal("Expected an error for invalid reported EPS, but got nil")
+		}
+		if !strings.Contains(err.Error(), "could not parse reported EPS") {
+			t.Errorf("Expected error message to contain 'could not parse reported EPS', but got: %v", err)
+		}
+	})
+
+	t.Run("Given a non-numeric EPS with permissive error mode, should skip the bad record", func(t *testing.T) {
+		const (
+			ticker    = "MSFT"
+			goodDate1 = "2025-06-30"
+			goodEps1  = "12.50"
+			badDate   = "2024-06-30"
+			goodDate2 = "2023-06-30"
+			goodEps2  = "10.25"
+		)
+		jsonData := []byte(fmt.Sprintf(`{
+			"symbol": "%s",
+			"annualEarnings": [
+				{ "fiscalDateEnding": "%s", "reportedEPS": "%s" },
+				{ "fiscalDateEnding": "%s", "reportedEPS": "None" },
+				{ "fiscalDateEnding": "%s", "reportedEPS": "%s" }
+			]
+		}`, ticker, goodDate1, goodEps1, badDate, goodDate2, goodEps2))
+
+		expected := []types.FlatAnnualEarnings{
+			{Ticker: ticker, FiscalDateEnding: goodDate1, ReportedEPS: 12.50},
+			{Ticker: ticker, FiscalDateEnding: goodDate2, ReportedEPS: 10.25},
+		}
+
+		records, err := ParseAnnualEarningsToFlat(jsonData, true)
+		if err != nil {
+			t.Fatalf("Expected no error when skipping bad records, but got: %v", err)
+		}
+
+		if diff := cmp.Diff(expected, records); diff != "" {
+			t.Errorf("ParseAnnualEarningsToFlat() mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("Given json with an empty annualEarnings array, should return an empty slice", func(t *testing.T) {
+		const ticker = "GOOG"
+		jsonData := []byte(fmt.Sprintf(`{
+			"symbol": "%s",
+			"annualEarnings": []
+		}`, ticker))
+
+		records, err := ParseAnnualEarningsToFlat(jsonData, false)
+		if err != nil {
+			t.Fatalf("Expected no error for an empty earnings array, but got: %v", err)
+		}
+
+		if len(records) != 0 {
+			t.Errorf("Expected 0 records for an empty earnings array, but got %d", len(records))
 		}
 	})
 }
