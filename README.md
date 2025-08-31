@@ -1,14 +1,18 @@
 # CIBO
 
-A stock price analysis assistant written in Go with a Bubbletea based terminal UI and a React based web UI. Currently in VERY early phase development.
+A stock price analysis assistant for performing common price/value analysis pipelines in a minimal application. This entire project was inspired by one screenshot seen in a Reddit thread
 
-## For local building and development
+~![novo_visualization](./docs/images/novo_visualiztion_1.png)
+
+which seemed like an occasionally useful visualization to have. Added onto this was the desire to have things like dividend payments and upcoming earnings call data all accessible via one system.
+
+## Needed for local building and development
 
 - Git
 - VSCode
 - Docker
 
-After cloning the application, open the file directory in VS Code, then click the prompt to reopen in a devcontainer. If you don't get the UI prompt you can find the command via the Command Palette. Once the container builds all needed software should be installed that is required to run code and work on the app including debugging, data exploration, compilation, etc.
+After cloning the application, open the file directory in VS Code, then click the prompt to reopen in a devcontainer. If you don't get the UI prompt you can find the command via the Command Palette. Once the container builds, all needed software should be installed that is required to run it and work on the app including debugging, unit testing, compilation to bins, etc.
 
 ## If you want to explore raw data from the parquet files
 

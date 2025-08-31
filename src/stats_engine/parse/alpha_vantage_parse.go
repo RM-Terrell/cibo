@@ -32,7 +32,7 @@ type DailyDataPoint struct {
 Function to take json data of daily prices and parse it into a collection
 of individual stock prices.
 */
-func ParseDailyPricesToFlat(jsonData []byte, skipErrors bool) ([]types.FlatStockRecord, error) {
+func ParseDailyPricesToFlat(jsonData []byte, skipErrors bool) ([]types.DailyStockRecord, error) {
 	var response DailyPricesResponse
 
 	if err := json.Unmarshal(jsonData, &response); err != nil {
@@ -44,7 +44,7 @@ func ParseDailyPricesToFlat(jsonData []byte, skipErrors bool) ([]types.FlatStock
 		return nil, fmt.Errorf("ticker not found in JSON Meta Data when parsing")
 	}
 
-	records := make([]types.FlatStockRecord, 0, len(response.TimeSeries))
+	records := make([]types.DailyStockRecord, 0, len(response.TimeSeries))
 
 	for rawDate, rawDataPoint := range response.TimeSeries {
 		closingPrice, err := strconv.ParseFloat(rawDataPoint.Close, 64)
@@ -56,7 +56,7 @@ func ParseDailyPricesToFlat(jsonData []byte, skipErrors bool) ([]types.FlatStock
 			return nil, fmt.Errorf("could not parse close price '%s' for date %s: %w", rawDataPoint.Close, rawDate, err)
 		}
 
-		records = append(records, types.FlatStockRecord{
+		records = append(records, types.DailyStockRecord{
 			Ticker:       ticker,
 			Date:         rawDate,
 			ClosingPrice: closingPrice,
@@ -78,9 +78,11 @@ type AnnualEarning struct {
 	Surprise         string `json:"surprise"`
 }
 
-// Function to take json data of annual earnings and parse it into a collection
-// of individual annual earnings data points.
-func ParseAnnualEarningsToFlat(jsonData []byte, skipErrors bool) ([]types.FlatAnnualEarnings, error) {
+/*
+Function to take json data of annual earnings and parse it into a collection
+of individual annual earnings data points.
+*/
+func ParseAnnualEarningsToFlat(jsonData []byte, skipErrors bool) ([]types.AnnualEarningRecord, error) {
 	var response AnnualEarningResponse
 
 	if err := json.Unmarshal(jsonData, &response); err != nil {
@@ -92,7 +94,7 @@ func ParseAnnualEarningsToFlat(jsonData []byte, skipErrors bool) ([]types.FlatAn
 		return nil, fmt.Errorf("ticker not found in JSON when parsing")
 	}
 
-	records := make([]types.FlatAnnualEarnings, 0, len(response.AnnualEarnings))
+	records := make([]types.AnnualEarningRecord, 0, len(response.AnnualEarnings))
 
 	for _, earnings := range response.AnnualEarnings {
 		fiscalDateEnding := earnings.FiscalDateEnding
@@ -107,7 +109,7 @@ func ParseAnnualEarningsToFlat(jsonData []byte, skipErrors bool) ([]types.FlatAn
 				fiscalDateEnding, epsParseError)
 		}
 
-		records = append(records, types.FlatAnnualEarnings{
+		records = append(records, types.AnnualEarningRecord{
 			Ticker:           ticker,
 			FiscalDateEnding: fiscalDateEnding,
 			ReportedEPS:      reportedEPS,

@@ -43,7 +43,7 @@ func TestParseToFlat(t *testing.T) {
 				expectedLen, len(records))
 		}
 
-		resultsMap := make(map[string]types.FlatStockRecord)
+		resultsMap := make(map[string]types.DailyStockRecord)
 		for _, r := range records {
 			resultsMap[r.Date] = r
 		}
@@ -164,7 +164,7 @@ func TestParseToFlat(t *testing.T) {
 				expectedLen, len(records))
 		}
 
-		resultsMap := make(map[string]types.FlatStockRecord)
+		resultsMap := make(map[string]types.DailyStockRecord)
 		for _, r := range records {
 			resultsMap[r.Date] = r
 		}
@@ -229,7 +229,7 @@ func TestParseAnnualEarningsToFlat(t *testing.T) {
 			]
 		}`, ticker, date1, eps1Str, date2, eps2Str))
 
-		expected := []types.FlatAnnualEarnings{
+		expected := []types.AnnualEarningRecord{
 			{Ticker: ticker, FiscalDateEnding: date1, ReportedEPS: eps1Float},
 			{Ticker: ticker, FiscalDateEnding: date2, ReportedEPS: eps2Float},
 		}
@@ -308,7 +308,7 @@ func TestParseAnnualEarningsToFlat(t *testing.T) {
 			]
 		}`, ticker, goodDate1, goodEps1, badDate, goodDate2, goodEps2))
 
-		expected := []types.FlatAnnualEarnings{
+		expected := []types.AnnualEarningRecord{
 			{Ticker: ticker, FiscalDateEnding: goodDate1, ReportedEPS: 12.50},
 			{Ticker: ticker, FiscalDateEnding: goodDate2, ReportedEPS: 10.25},
 		}

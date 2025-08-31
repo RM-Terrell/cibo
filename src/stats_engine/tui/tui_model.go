@@ -5,6 +5,7 @@ import (
 	"stats_engine/api"
 	"stats_engine/io"
 	"stats_engine/parse"
+	"stats_engine/statistics"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -121,10 +122,14 @@ func (m model) processDataCmd() tea.Msg {
 		return processErrorMsg{err: fmt.Errorf("daily prices parsing failed: %w", dailyParseErr)}
 	}
 
-	// todo "_"
-	_, annualEarningsParseErr := parse.ParseAnnualEarningsToFlat(annualEarningsJson, true)
+	annualEarningsRecords, annualEarningsParseErr := parse.ParseAnnualEarningsToFlat(annualEarningsJson, true)
 	if annualEarningsParseErr != nil {
 		return processErrorMsg{err: fmt.Errorf("annual earnings parsing failed: %w", annualEarningsParseErr)}
+	}
+
+	fairValuePriceRecords, fairValueErr := statistics.CalculateFairValueHistory(annualEarningsRecords)
+	if fairValueErr != nil {
+		return processErrorMsg{err: fmt.Errorf("could not calculate fair value: %w", fairValueErr)}
 	}
 
 	fileName := fmt.Sprintf("%s.parquet", ticker)
@@ -134,11 +139,9 @@ func (m model) processDataCmd() tea.Msg {
 	}
 	defer fw.Close()
 
-	if err := io.WriteToParquet(dailyPricesRecords, fw); err != nil {
+	if err := io.WriteCombinedPriceData(dailyPricesRecords, fairValuePriceRecords, fw); err != nil {
 		return processErrorMsg{err: fmt.Errorf("failed to write parquet data: %w", err)}
 	}
-
-	// todo write fair value price data to parquet file too
 
 	return processSuccessMsg{recordCount: len(dailyPricesRecords), fileName: fileName}
 }
