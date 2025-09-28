@@ -3,8 +3,6 @@ package types
 //! Package convention. use snake case for parquet column `name` fields.
 //! SQL compat, readability, because i said so, etc
 
-//! New parquet types must be added to type_test.go for convention testing
-
 type DailyStockRecord struct {
 	Ticker       string
 	Date         string
@@ -38,6 +36,9 @@ type CombinedPriceRecord struct {
 	Price  float64
 	Series string // fair value estimate, actually daily, etc
 }
+
+// ---- Parquet types
+//! New parquet types must be added to type_test.go for convention testing
 
 type CombinedPriceRecordParquet struct {
 	Ticker string  `parquet:"name=ticker,type=BYTE_ARRAY,convertedtype=UTF8"`
