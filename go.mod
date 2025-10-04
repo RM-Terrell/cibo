@@ -1,4 +1,4 @@
-module stats_engine
+module cibo
 
 go 1.23.0
 

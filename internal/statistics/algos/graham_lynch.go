@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"stats_engine/types"
+	"cibo/internal/types"
 )
 
 /*

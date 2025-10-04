@@ -3,7 +3,7 @@ package statistics
 import (
 	"testing"
 
-	"stats_engine/types"
+	"cibo/internal/types"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"

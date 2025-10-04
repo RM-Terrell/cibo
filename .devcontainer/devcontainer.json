@@ -40,7 +40,7 @@
         }
     },
         "containerEnv": {
-        "API_KEYS_CONFIG_PATH": "/workspaces/cibo/src/stats_engine/keys/api_keys.toml"
+        "API_KEYS_CONFIG_PATH": "/workspaces/cibo/internal/statistics/keys/api_keys.toml"
     },
     "forwardPorts": [3000]
 }

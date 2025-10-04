@@ -1,11 +1,11 @@
 package main
 
 import (
+	"cibo/internal/statistics/api"
+	"cibo/internal/statistics/config"
+	"cibo/internal/tui"
 	"log"
 	"os"
-	"stats_engine/api"
-	"stats_engine/config"
-	"stats_engine/tui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

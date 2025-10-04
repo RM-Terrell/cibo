@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir ipykernel pyarrow pandas
 RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-arm64.tar.gz" | tar -C /usr/local -xz
 
 WORKDIR /app
-COPY src/stats_engine/go.mod src/stats_engine/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 RUN go install golang.org/x/tools/gopls@latest \

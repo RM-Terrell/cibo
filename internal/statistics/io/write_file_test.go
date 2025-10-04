@@ -2,13 +2,14 @@ package io
 
 import (
 	"path/filepath"
-	"stats_engine/types"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/reader"
+
+	"cibo/internal/types"
 )
 
 func TestWriteCombinedPriceData(t *testing.T) {

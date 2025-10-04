@@ -7,7 +7,7 @@ import (
 	"github.com/xitongsys/parquet-go/source"
 	"github.com/xitongsys/parquet-go/writer"
 
-	"stats_engine/types"
+	"cibo/internal/types"
 )
 
 // Merges daily stock prices and annual fair value prices

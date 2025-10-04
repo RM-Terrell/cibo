@@ -1,11 +1,11 @@
 package tui
 
 import (
+	statistics "cibo/internal/statistics/algos"
+	"cibo/internal/statistics/api"
+	"cibo/internal/statistics/io"
+	"cibo/internal/statistics/parse"
 	"fmt"
-	"stats_engine/api"
-	"stats_engine/io"
-	"stats_engine/parse"
-	"stats_engine/statistics"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"

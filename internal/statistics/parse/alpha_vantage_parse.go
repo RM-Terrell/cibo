@@ -6,7 +6,7 @@ import (
 	"log"
 	"strconv"
 
-	"stats_engine/types"
+	"cibo/internal/types"
 )
 
 /*
