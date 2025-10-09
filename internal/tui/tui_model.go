@@ -5,6 +5,7 @@ import (
 	"cibo/internal/statistics/api"
 	"cibo/internal/statistics/io"
 	"cibo/internal/statistics/parse"
+	"cibo/internal/types"
 	"fmt"
 	"strings"
 
@@ -17,7 +18,6 @@ import (
 
 /*
 The goal of this module is to act as the primary control point for the Terminal UI
-
 layer, powered by the Bubble Tea library. This library functions via a model (state),
 update, view system that should be familiar to anyone whose worked with Redux or a similar
 UI library / framework system.
@@ -37,8 +37,9 @@ var (
 // --- Custom Messages for data processing pipeline ---
 
 type processSuccessMsg struct {
-	recordCount int
-	fileName    string
+	recordCount       int
+	fileName          string
+	combinedPriceData []types.CombinedPriceRecord
 }
 
 type processErrorMsg struct {
@@ -48,13 +49,15 @@ type processErrorMsg struct {
 // --- Bubbletea Model ---
 
 type model struct {
-	focusIndex     int
-	inputs         []textinput.Model
-	spinner        spinner.Model
-	loadingMessage string
-	apiClient      *api.Client
-	successMessage string
-	err            error
+	focusIndex             int
+	inputs                 []textinput.Model
+	spinner                spinner.Model
+	loadingMessage         string
+	apiClient              *api.Client
+	successMessage         string
+	err                    error
+	processingComplete     bool
+	launchWebUIPromptIndex int
 }
 
 // Defines the initial state of the TUI
@@ -132,6 +135,8 @@ func (m model) processDataCmd() tea.Msg {
 		return processErrorMsg{err: fmt.Errorf("could not calculate fair value: %w", fairValueErr)}
 	}
 
+	combinedData := types.DailyAndFairPriceToCombined(dailyPricesRecords, fairValuePriceRecords)
+
 	fileName := fmt.Sprintf("%s.parquet", ticker)
 	fw, err := local.NewLocalFileWriter(fileName)
 	if err != nil {
@@ -139,7 +144,7 @@ func (m model) processDataCmd() tea.Msg {
 	}
 	defer fw.Close()
 
-	if err := io.WriteCombinedPriceData(dailyPricesRecords, fairValuePriceRecords, fw); err != nil {
+	if err := io.WriteCombinedPriceDataToParquet(combinedData, fw); err != nil {
 		return processErrorMsg{err: fmt.Errorf("failed to write parquet data: %w", err)}
 	}
 

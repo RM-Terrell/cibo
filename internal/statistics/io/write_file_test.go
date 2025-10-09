@@ -14,18 +14,16 @@ import (
 
 func TestWriteCombinedPriceData(t *testing.T) {
 
-	t.Run("Given daily and fair value records, verify they are correctly merged and written", func(t *testing.T) {
-		dailyPrices := []types.DailyStockRecord{
-			{Ticker: "TEST", Date: "2025-01-01", ClosingPrice: 100.0},
-			{Ticker: "TEST", Date: "2025-01-02", ClosingPrice: 102.5},
-		}
-		fairValuePrices := []types.FairValuePriceRecord{
-			{Ticker: "TEST", Date: "2025-12-31", FairValuePrice: 150.0},
+	t.Run("Given daily and fair value records, verify they are correctly written", func(t *testing.T) {
+		combinedData := []types.CombinedPriceRecord{
+			{Ticker: "TEST", Date: "2025-01-01", Price: 100.0, Series: "daily_price"},
+			{Ticker: "TEST", Date: "2025-01-02", Price: 102.5, Series: "daily_price"},
+			{Ticker: "TEST", Date: "2025-12-31", Price: 150.0, Series: "fair_value"},
 		}
 
 		expectedOutput := []types.CombinedPriceRecordParquet{
-			{Ticker: "TEST", Date: "2025-01-01", Price: 100.0, Series: "actual_price"},
-			{Ticker: "TEST", Date: "2025-01-02", Price: 102.5, Series: "actual_price"},
+			{Ticker: "TEST", Date: "2025-01-01", Price: 100.0, Series: "daily_price"},
+			{Ticker: "TEST", Date: "2025-01-02", Price: 102.5, Series: "daily_price"},
 			{Ticker: "TEST", Date: "2025-12-31", Price: 150.0, Series: "fair_value"},
 		}
 
@@ -35,7 +33,7 @@ func TestWriteCombinedPriceData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create file writer: %v", err)
 		}
-		err = WriteCombinedPriceData(dailyPrices, fairValuePrices, fw)
+		err = WriteCombinedPriceDataToParquet(combinedData, fw)
 		if closeErr := fw.Close(); closeErr != nil {
 			t.Fatalf("Failed to close file writer: %v", closeErr)
 		}
@@ -67,68 +65,56 @@ func TestWriteCombinedPriceData(t *testing.T) {
 		}
 	})
 
-	t.Run("Given only daily prices, verify only they are written", func(t *testing.T) {
-		dailyPrices := []types.DailyStockRecord{
-			{Ticker: "TEST", Date: "2025-01-01", ClosingPrice: 100.0},
-		}
-		// Distinguishing line, empty fair value data
-		fairValuePrices := []types.FairValuePriceRecord{}
+	t.Run("Given only daily prices, verify only daily are written. Defensive paranoia test in case of future data series logic mishandling",
+		func(t *testing.T) {
+			combinedData := []types.CombinedPriceRecord{
+				{Ticker: "TEST", Date: "2025-01-01", Price: 100.0, Series: "daily_price"}, // note only daily_price series
+			}
 
-		expectedOutput := []types.CombinedPriceRecordParquet{
-			{Ticker: "TEST", Date: "2025-01-01", Price: 100.0, Series: "actual_price"},
-		}
+			expectedOutput := []types.CombinedPriceRecordParquet{
+				{Ticker: "TEST", Date: "2025-01-01", Price: 100.0, Series: "daily_price"},
+			}
+
+			tempDir := t.TempDir()
+			filePath := filepath.Join(tempDir, "daily_only.parquet")
+			fw, _ := local.NewLocalFileWriter(filePath)
+			err := WriteCombinedPriceDataToParquet(combinedData, fw)
+			fw.Close()
+			if err != nil {
+				t.Fatalf("WriteCombinedPriceData returned an unexpected error: %v", err)
+			}
+
+			fr, _ := local.NewLocalFileReader(filePath)
+			defer fr.Close()
+			pr, _ := reader.NewParquetReader(fr, new(types.CombinedPriceRecordParquet), 4)
+
+			readRecords := make([]types.CombinedPriceRecordParquet, 1)
+			pr.Read(&readRecords)
+
+			if diff := cmp.Diff(expectedOutput, readRecords); diff != "" {
+				t.Errorf("Record mismatch (-want +got):\n%s", diff)
+			}
+		})
+
+	t.Run("Given an empty value in the daily prices, verify an empty file is created without error", func(t *testing.T) {
+		combinedDataEmpty := []types.CombinedPriceRecord{}
 
 		tempDir := t.TempDir()
-		filePath := filepath.Join(tempDir, "daily_only.parquet")
+		filePath := filepath.Join(tempDir, "empty.parquet")
 		fw, _ := local.NewLocalFileWriter(filePath)
-		err := WriteCombinedPriceData(dailyPrices, fairValuePrices, fw)
+		err := WriteCombinedPriceDataToParquet(combinedDataEmpty, fw)
 		fw.Close()
+
 		if err != nil {
-			t.Fatalf("WriteCombinedPriceData returned an unexpected error: %v", err)
+			t.Fatalf("WriteCombinedPriceData with empty input returned an error: %v", err)
 		}
 
 		fr, _ := local.NewLocalFileReader(filePath)
 		defer fr.Close()
 		pr, _ := reader.NewParquetReader(fr, new(types.CombinedPriceRecordParquet), 4)
 
-		readRecords := make([]types.CombinedPriceRecordParquet, 1)
-		pr.Read(&readRecords)
-
-		if diff := cmp.Diff(expectedOutput, readRecords); diff != "" {
-			t.Errorf("Record mismatch (-want +got):\n%s", diff)
-		}
-	})
-
-	t.Run("Given empty or nil slices, verify an empty file is created without error", func(t *testing.T) {
-		testCases := map[string]struct {
-			daily     []types.DailyStockRecord
-			fairValue []types.FairValuePriceRecord
-		}{
-			"BothEmpty": {daily: []types.DailyStockRecord{}, fairValue: []types.FairValuePriceRecord{}},
-			"BothNil":   {daily: nil, fairValue: nil},
-			"OneNil":    {daily: []types.DailyStockRecord{}, fairValue: nil},
-		}
-
-		for name, tc := range testCases {
-			t.Run(name, func(t *testing.T) {
-				tempDir := t.TempDir()
-				filePath := filepath.Join(tempDir, "empty.parquet")
-				fw, _ := local.NewLocalFileWriter(filePath)
-				err := WriteCombinedPriceData(tc.daily, tc.fairValue, fw)
-				fw.Close()
-
-				if err != nil {
-					t.Fatalf("WriteCombinedPriceData with empty/nil input returned an error: %v", err)
-				}
-
-				fr, _ := local.NewLocalFileReader(filePath)
-				defer fr.Close()
-				pr, _ := reader.NewParquetReader(fr, new(types.CombinedPriceRecordParquet), 4)
-
-				if pr.GetNumRows() != 0 {
-					t.Errorf("Expected 0 rows for empty/nil input, but got %d", pr.GetNumRows())
-				}
-			})
+		if pr.GetNumRows() != 0 {
+			t.Errorf("Expected 0 rows for empty/nil input, but got %d", pr.GetNumRows())
 		}
 	})
 }

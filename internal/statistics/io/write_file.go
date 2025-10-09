@@ -10,40 +10,18 @@ import (
 	"cibo/internal/types"
 )
 
-// Merges daily stock prices and annual fair value prices
-// into a single long-format structure and writes them to a Parquet file.
-func WriteCombinedPriceData(
-	dailyPrices []types.DailyStockRecord,
-	fairValuePrices []types.FairValuePriceRecord,
+// Writes combined price data to a Parquet file.
+func WriteCombinedPriceDataToParquet(
+	combinedData []types.CombinedPriceRecord,
 	fw source.ParquetFile,
 ) error {
-
-	combinedData := make([]types.CombinedPriceRecordParquet, 0, len(dailyPrices)+len(fairValuePrices))
-
-	for _, record := range dailyPrices {
-		combinedData = append(combinedData, types.CombinedPriceRecordParquet{
-			Ticker: record.Ticker,
-			Date:   record.Date,
-			Price:  record.ClosingPrice,
-			Series: "actual_price",
-		})
-	}
-
-	for _, record := range fairValuePrices {
-		combinedData = append(combinedData, types.CombinedPriceRecordParquet{
-			Ticker: record.Ticker,
-			Date:   record.Date,
-			Price:  record.FairValuePrice,
-			Series: "fair_value",
-		})
-	}
-
+	combinedDataParquet := types.CombinedPricesToParquet(combinedData)
 	pw, err := writer.NewParquetWriter(fw, new(types.CombinedPriceRecordParquet), 4)
 	if err != nil {
 		return fmt.Errorf("failed to create parquet writer: %w", err)
 	}
 
-	for _, record := range combinedData {
+	for _, record := range combinedDataParquet {
 		if err = pw.Write(record); err != nil {
 			return fmt.Errorf("failed to write record: %w", err)
 		}
@@ -53,6 +31,6 @@ func WriteCombinedPriceData(
 		return fmt.Errorf("failed to stop parquet writer: %w", err)
 	}
 
-	log.Printf("Successfully wrote %d combined records to Parquet file", len(combinedData))
+	log.Printf("Successfully wrote %d combined records to Parquet file", len(combinedDataParquet))
 	return nil
 }
