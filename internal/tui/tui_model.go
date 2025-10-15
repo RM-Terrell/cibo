@@ -1,11 +1,7 @@
 package tui
 
 import (
-	statistics "cibo/internal/statistics/algos"
-	"cibo/internal/statistics/api"
-	"cibo/internal/statistics/io"
-	"cibo/internal/statistics/parse"
-	"cibo/internal/types"
+	"cibo/internal/pipelines"
 	"fmt"
 	"strings"
 
@@ -13,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/xitongsys/parquet-go-source/local"
 )
 
 /*
@@ -37,9 +32,8 @@ var (
 // --- Custom Messages for data processing pipeline ---
 
 type processSuccessMsg struct {
-	recordCount       int
-	fileName          string
-	combinedPriceData []types.CombinedPriceRecord
+	recordCount int
+	fileName    string
 }
 
 type processErrorMsg struct {
@@ -49,11 +43,11 @@ type processErrorMsg struct {
 // --- Bubbletea Model ---
 
 type model struct {
+	pipelines              *pipelines.Pipelines
 	focusIndex             int
 	inputs                 []textinput.Model
 	spinner                spinner.Model
 	loadingMessage         string
-	apiClient              *api.Client
 	successMessage         string
 	err                    error
 	processingComplete     bool
@@ -61,10 +55,10 @@ type model struct {
 }
 
 // Defines the initial state of the TUI
-func NewModel(client *api.Client) model {
+func NewModel(pipelines *pipelines.Pipelines) model {
 	m := model{
 		inputs:    make([]textinput.Model, 3),
-		apiClient: client,
+		pipelines: pipelines,
 	}
 
 	m.spinner = spinner.New()
@@ -106,49 +100,22 @@ func (m model) Init() tea.Cmd {
 }
 
 // --- Functionality Commands ---
-// Run the entire stock price data pipeline.
 func (m model) processDataCmd() tea.Msg {
 	ticker := m.inputs[0].Value()
 
-	dailyPricesJson, dailyFetchErr := m.apiClient.FetchDailyPrice(ticker)
-	if dailyFetchErr != nil {
-		return processErrorMsg{err: fmt.Errorf("daily prices API fetch failed: %w", dailyFetchErr)}
+	lynchFairValueInputs := pipelines.LynchFairValueInputs{
+		Ticker: ticker,
 	}
 
-	annualEarningsJson, annualEarningsFetchErr := m.apiClient.FetchEarnings(ticker)
-	if annualEarningsFetchErr != nil {
-		return processErrorMsg{err: fmt.Errorf("annual earnings API fetch failed: %w", annualEarningsFetchErr)}
-	}
-
-	dailyPricesRecords, dailyParseErr := parse.ParseDailyPricesToFlat(dailyPricesJson, true)
-	if dailyParseErr != nil {
-		return processErrorMsg{err: fmt.Errorf("daily prices parsing failed: %w", dailyParseErr)}
-	}
-
-	annualEarningsRecords, annualEarningsParseErr := parse.ParseAnnualEarningsToFlat(annualEarningsJson, true)
-	if annualEarningsParseErr != nil {
-		return processErrorMsg{err: fmt.Errorf("annual earnings parsing failed: %w", annualEarningsParseErr)}
-	}
-
-	fairValuePriceRecords, fairValueErr := statistics.CalculateFairValueHistory(annualEarningsRecords)
-	if fairValueErr != nil {
-		return processErrorMsg{err: fmt.Errorf("could not calculate fair value: %w", fairValueErr)}
-	}
-
-	combinedData := types.DailyAndFairPriceToCombined(dailyPricesRecords, fairValuePriceRecords)
-
-	fileName := fmt.Sprintf("%s.parquet", ticker)
-	fw, err := local.NewLocalFileWriter(fileName)
+	lynchFairValueOutputs, err := m.pipelines.LynchFairValuePipeline.RunPipeline(lynchFairValueInputs)
 	if err != nil {
-		return processErrorMsg{err: fmt.Errorf("failed to create file '%s': %w", fileName, err)}
-	}
-	defer fw.Close()
-
-	if err := io.WriteCombinedPriceDataToParquet(combinedData, fw); err != nil {
-		return processErrorMsg{err: fmt.Errorf("failed to write parquet data: %w", err)}
+		return processErrorMsg{err: err}
 	}
 
-	return processSuccessMsg{recordCount: len(dailyPricesRecords), fileName: fileName}
+	return processSuccessMsg{
+		recordCount: lynchFairValueOutputs.RecordCount,
+		fileName:    lynchFairValueOutputs.FileName,
+	}
 }
 
 // --- Bubbletea Update ---

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stock Price Analysis</title>
+    <!-- The path is relative to the server root 'static' dir -->
+    <script src="/js/plotly.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f8f9fa; }
+        #chart { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="chart"></div>
+    <script>
+        fetch('/api/data')
+            .then(response => response.json())
+            .then(data => {
+                if (!data || data.length === 0) {
+                    document.getElementById('chart').innerText = "No data available to display.";
+                    return;
+                }
+
+                const actualPrices = { x: [], y: [], mode: 'lines', name: 'Actual Price', line: { color: '#1f77b4' } };
+                const fairValue = { x: [], y: [], mode: 'lines+markers', name: 'Fair Value', line: { color: '#ff7f0e' } };
+
+                data.forEach(d => {
+                    if (d.Series === 'daily_price') {
+                        actualPrices.x.push(d.Date);
+                        actualPrices.y.push(d.Price);
+                    } else if (d.Series === 'fair_value') {
+                        fairValue.x.push(d.Date);
+                        fairValue.y.push(d.Price);
+                    }
+                });
+
+                const layout = {
+                    title: `Price Analysis for ${data[0].Ticker}`,
+                    xaxis: { title: 'Date' },
+                    yaxis: { title: 'Price (USD)', tickprefix: '$' },
+                    margin: { l: 50, r: 50, b: 50, t: 50, pad: 4 }
+                };
+
+                Plotly.newPlot('chart', [actualPrices, fairValue], layout, {responsive: true});
+            })
+            .catch(error => {
+                console.error('Error fetching chart data:', error);
+                document.getElementById('chart').innerText = "Failed to load chart data.";
+            });
+    </script>
+</body>
+</html>

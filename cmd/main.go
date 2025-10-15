@@ -1,8 +1,10 @@
 package main
 
 import (
+	"cibo/internal/pipelines"
 	"cibo/internal/statistics/api"
 	"cibo/internal/statistics/config"
+	"cibo/internal/statistics/io"
 	"cibo/internal/tui"
 	"log"
 	"os"
@@ -22,8 +24,11 @@ func main() {
 	}
 
 	apiClient := api.NewClient(cfg.AlphaVantageAPIKey)
+	parquetWriter := io.NewParquetIOAdapter()
 
-	p := tea.NewProgram(tui.NewModel(apiClient))
+	pipelines := pipelines.NewPipelines(apiClient, parquetWriter)
+
+	p := tea.NewProgram(tui.NewModel(pipelines))
 
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Alas, there's been an error: %v", err)

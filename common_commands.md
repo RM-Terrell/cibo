@@ -18,7 +18,7 @@ dlv
 
 As part of dev container setup there should be a unit testing extension installed that will both add a "Testing" flask icon on the left side of the editor from which you can run tests, and also add an overlay on unit test code for "run" and "debug" to run them right from the code with one click.
 
-**CURRENT ISSUE**: There is currently a quirk in the unit testing extension where you must highlight the text name value (between the double quotes) of the unit test in order for the inline "run" and "debug" buttons to run the desired test. I think this is an issue with how I structured and named the tests causing the extension to be confused. The left side panel Testing bit works perfectly though.
+To run the unit test at your cursor use `Command` + `;` followed by `C`, to run all tests in the file use `Command` + `;` followed by `F` (assuming default vs code shortcuts on Mac).
 
 ## Checking coverage
 
@@ -30,7 +30,7 @@ In vscode make sure you have
     },
 ```
 
-Then run command shift P, then select:
+Then run `Command` + `shift` + `P`, then select:
 
 > Go: Toggle Test Coverage in Current Package
 

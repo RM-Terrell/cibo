@@ -1,4 +1,4 @@
-package statistics
+package algos
 
 import (
 	"fmt"
