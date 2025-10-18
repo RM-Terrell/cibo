@@ -15,7 +15,7 @@ import (
 The goal of this module is to act as the primary control point for the Terminal UI
 layer, powered by the Bubble Tea library. This library functions via a model (state),
 update, view system that should be familiar to anyone whose worked with Redux or a similar
-UI library / framework system.
+UI library / framework system, with the "update" cycle acting as a familiar state reducer
 
 Docs on Bubble Tea can be found here: github.com/charmbracelet/bubbletea
 */
@@ -107,7 +107,7 @@ func (m model) processDataCmd() tea.Msg {
 		Ticker: ticker,
 	}
 
-	lynchFairValueOutputs, err := m.pipelines.LynchFairValuePipeline.RunPipeline(lynchFairValueInputs)
+	lynchFairValueOutputs, err := m.pipelines.LynchFairValue.RunPipeline(lynchFairValueInputs)
 	if err != nil {
 		return processErrorMsg{err: err}
 	}

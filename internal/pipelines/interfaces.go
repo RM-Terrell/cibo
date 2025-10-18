@@ -31,3 +31,7 @@ type APIClient interface {
 type ParquetWriter interface {
 	WriteCombinedPriceDataToParquet(records []types.CombinedPriceRecord, writer io.WriteCloser) error
 }
+
+type FairValuePipeline interface {
+	RunPipeline(input LynchFairValueInputs) (*LynchFairValueOutputs, error)
+}

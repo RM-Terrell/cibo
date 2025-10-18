@@ -18,13 +18,6 @@ type LynchFairValuePipeline struct {
 	parquetWriter ParquetWriter
 }
 
-func NewLynchFairValuePipeline(client APIClient, writer ParquetWriter) *LynchFairValuePipeline {
-	return &LynchFairValuePipeline{
-		apiClient:     client,
-		parquetWriter: writer,
-	}
-}
-
 type LynchFairValueInputs struct {
 	Ticker string
 }
@@ -33,6 +26,13 @@ type LynchFairValueOutputs struct {
 	RecordCount       int
 	FileName          string
 	CombinedPriceData []types.CombinedPriceRecord
+}
+
+func NewLynchFairValuePipeline(client APIClient, writer ParquetWriter) *LynchFairValuePipeline {
+	return &LynchFairValuePipeline{
+		apiClient:     client,
+		parquetWriter: writer,
+	}
 }
 
 func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*LynchFairValueOutputs, error) {
