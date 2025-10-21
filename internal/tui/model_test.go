@@ -40,6 +40,28 @@ func dispatch(m model, msg tea.Msg) (model, tea.Cmd) {
 	return newModel.(model), cmd
 }
 
+// Simulates the Bubble Tea runtime by executing a command and dispatching
+// its resulting message(s) back into the model's Update loop. It handles both
+// single and batched commands.
+func processCmd(m model, cmd tea.Cmd) model {
+	if cmd == nil {
+		return m
+	}
+
+	msg := cmd()
+
+	if batchMsg, ok := msg.(tea.BatchMsg); ok {
+		for _, subCmd := range batchMsg {
+			m = processCmd(m, subCmd) // Recursively process, in case of nested batches
+		}
+		return m
+	}
+
+	// If it's a single message, just dispatch it
+	m, _ = dispatch(m, msg)
+	return m
+}
+
 // Given a user who fills out the fair value form and submits it successfully,
 // verify that the TUI correctly calls the pipeline and displays the success message.
 func TestTUI_HappyPath_Success(t *testing.T) {
@@ -55,6 +77,7 @@ func TestTUI_HappyPath_Success(t *testing.T) {
 	}
 
 	m := NewModel(rootPipelines)
+	var cmd tea.Cmd
 
 	// Simulate the user typing a ticker into the first input.
 	for _, char := range "NVDA" {
@@ -77,15 +100,14 @@ func TestTUI_HappyPath_Success(t *testing.T) {
 	}
 
 	// Simulate pressing "Enter" to submit the form.
-	m, _ = dispatch(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd = dispatch(m, tea.KeyMsg{Type: tea.KeyEnter})
 
 	// Verify the model is now in a loading state.
 	if m.loadingMessage == "" {
 		t.Fatal("Expected model to be in a loading state, but loadingMessage was empty")
 	}
 
-	// todo this is kinda cursed, handle batching instead of grey box testing
-	resultMsg := m.processDataCmd()
+	m = processCmd(m, cmd)
 
 	if !mockPipeline.wasCalled {
 		t.Error("Expected the pipeline's RunPipeline method to be called, but it was not.")
@@ -93,8 +115,6 @@ func TestTUI_HappyPath_Success(t *testing.T) {
 	if mockPipeline.receivedTicker != "NVDA" {
 		t.Errorf("Expected pipeline to receive ticker 'NVDA', but got '%s'", mockPipeline.receivedTicker)
 	}
-
-	m, _ = dispatch(m, resultMsg)
 
 	if m.successMessage == "" {
 		t.Fatal("Expected a success message, but it was empty")
