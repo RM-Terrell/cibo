@@ -36,11 +36,13 @@ func NewLynchFairValuePipeline(client APIClient, writer ParquetWriter) *LynchFai
 }
 
 func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*LynchFairValueOutputs, error) {
+	// todo pass in date ranges here
 	dailyPricesJson, err := p.apiClient.FetchDailyPrice(input.Ticker)
 	if err != nil {
 		return nil, fmt.Errorf("daily prices API fetch failed: %w", err)
 	}
 
+	// todo pass in date ranges here
 	annualEarningsJson, err := p.apiClient.FetchEarnings(input.Ticker)
 	if err != nil {
 		return nil, fmt.Errorf("annual earnings API fetch failed: %w", err)

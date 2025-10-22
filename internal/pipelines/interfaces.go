@@ -15,12 +15,11 @@ import (
 // wild and wrote about it here: https://www.dashdashforce.dev/posts/golang-interface-testing
 
 /*
-	If you wind up here trying to find a definition of a function in the code, you'll want
-	to look in the concrete implementation passed in higher up the code stack (probably main.go),
-	and find the function with the matching name from the interface, or locate it with a whole file system search.
-	If using Goland as an editor you might be able to click "see definitions" or "see implementations" to jump to it.
-	this initial confusion following imports is an unfortunate side effect of interfaces in Go so aim to
-	keep them at a minimum.
+	If you wind up here via a "go to definition" trying to find the source of a function in the code, you'll want
+	to use the vscode right click "go to implementation" to find the source code of the concrete impl,
+	instead of command click / "go to definition".
+	If using Goland as an editor you should see a "see definitions" or "see implementations" option to jump to it.
+	This initial confusion of traversing imports is an unfortunate side effect of interfaces in Go
 */
 
 type APIClient interface {

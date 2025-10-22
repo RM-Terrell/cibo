@@ -10,39 +10,65 @@ import (
 	"net/http"
 	"os/exec"
 	"runtime"
+
+	"github.com/xitongsys/parquet-go-source/local"
+	"github.com/xitongsys/parquet-go/reader"
 )
 
-func Start(chartData []types.CombinedPriceRecord) {
-	// Use a listener on port 0 to get a random free port from the OS to try to avoid port conflicts
+func PrepareListener() (net.Listener, string, error) {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		log.Fatalf("Failed to find a free port: %v", err)
+		return nil, "", fmt.Errorf("failed to find a free port: %w", err)
 	}
 	port := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("http://localhost:%d", port)
+	return listener, url, nil
+}
 
-	// Create a sub-filesystem from our embedded files
-	// This makes it so the server's root ("/") corresponds to the "static" directory.
+func Start(listener net.Listener, filePath string) {
 	staticFS, err := fs.Sub(EmbeddedFiles, "static")
 	if err != nil {
 		log.Fatalf("Failed to create sub-filesystem: %v", err)
 	}
 
-	// HANDLER ROOT: Serve static files from the embedded filesystem.
-	http.Handle("/", http.FileServer(http.FS(staticFS)))
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.FS(staticFS)))
+	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
+		fr, err := local.NewLocalFileReader(filePath)
+		if err != nil {
+			log.Printf("Failed to open parquet file: %v", err)
+			http.Error(w, "Could not read data file", http.StatusInternalServerError)
+			return
+		}
+		defer fr.Close()
 
-	// HANDLER DATA: The data API endpoint.
-	http.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
+		pr, err := reader.NewParquetReader(fr, new(types.CombinedPriceRecord), 4)
+		if err != nil {
+			log.Printf("Failed to create parquet reader: %v", err)
+			http.Error(w, "Could not read data file", http.StatusInternalServerError)
+			return
+		}
+		defer pr.ReadStop()
+
+		numRecords := int(pr.GetNumRows())
+		records := make([]types.CombinedPriceRecord, numRecords)
+		if err := pr.Read(&records); err != nil {
+			log.Printf("Failed to read records from parquet file: %v", err)
+			http.Error(w, "Could not read data file", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(chartData)
+		json.NewEncoder(w).Encode(records)
 	})
 
+	url := fmt.Sprintf("http://%s", listener.Addr().String())
 	log.Printf("Chart visualization server starting at: %s", url)
 	log.Println("If your browser does not open automatically, please navigate to the URL above.")
 
 	openBrowser(url)
 
-	if err := http.Serve(listener, nil); err != nil {
+	if err := http.Serve(listener, mux); err != nil {
 		log.Fatalf("HTTP server failed: %v", err)
 	}
 }

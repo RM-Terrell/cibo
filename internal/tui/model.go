@@ -2,6 +2,7 @@ package tui
 
 import (
 	"cibo/internal/pipelines"
+	"cibo/internal/web"
 	"fmt"
 	"strings"
 
@@ -15,7 +16,7 @@ import (
 The goal of this module is to act as the primary control point for the Terminal UI
 layer, powered by the Bubble Tea library. This library functions via a model (state),
 update, view system that should be familiar to anyone whose worked with Redux or a similar
-UI library / framework system, with the "update" cycle acting as a familiar state reducer
+UI library built on the ELM architecture, with the "Update()" cycle acting as a familiar state reducer
 
 Docs on Bubble Tea can be found here: github.com/charmbracelet/bubbletea
 */
@@ -40,18 +41,25 @@ type processErrorMsg struct {
 	err error
 }
 
+type webUILaunchedMsg struct {
+	url string
+}
+
 // --- Bubbletea Model ---
 
 type model struct {
-	pipelines              *pipelines.Pipelines
-	focusIndex             int
-	inputs                 []textinput.Model
-	spinner                spinner.Model
-	loadingMessage         string
-	successMessage         string
-	err                    error
-	processingComplete     bool
-	launchWebUIPromptIndex int
+	pipelines  *pipelines.Pipelines
+	focusIndex int
+	// todo maybe update below naming to be specific to stock ticker and dates, not just "inputs"
+	inputs             []textinput.Model
+	spinner            spinner.Model
+	loadingMessage     string
+	successMessage     string
+	err                error
+	processingComplete bool
+	resultFileName     string
+	launchUIPrompt     textinput.Model
+	serverInfoMessage  string
 }
 
 // Defines the initial state of the TUI
@@ -92,6 +100,13 @@ func NewModel(pipelines *pipelines.Pipelines) model {
 		m.inputs[i] = t
 	}
 
+	launchPrompt := textinput.New()
+	launchPrompt.Prompt = "Launch the web UI to view the chart? (y/n) "
+	launchPrompt.Cursor.Style = cursorStyle
+	launchPrompt.CharLimit = 1
+	launchPrompt.Width = 3
+	m.launchUIPrompt = launchPrompt
+
 	return m
 }
 
@@ -99,10 +114,38 @@ func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
+func (m model) reset() model {
+	for i := range m.inputs {
+		m.inputs[i].Reset()
+	}
+	m.launchUIPrompt.Reset()
+
+	m.inputs[0].Focus()
+	m.focusIndex = 0
+
+	m.processingComplete = false
+	m.successMessage = ""
+	m.resultFileName = ""
+	m.err = nil
+	m.serverInfoMessage = ""
+
+	return m
+}
+
+func (m model) launchWebUICmd() tea.Msg {
+	listener, url, err := web.PrepareListener()
+	if err != nil {
+		return processErrorMsg{err: err}
+	}
+	go web.Start(listener, m.resultFileName)
+	return webUILaunchedMsg{url: url}
+}
+
 // --- Functionality Commands ---
 func (m model) processDataCmd() tea.Msg {
 	ticker := m.inputs[0].Value()
 
+	// todo need to take in date ranges you goof, you forgot them
 	lynchFairValueInputs := pipelines.LynchFairValueInputs{
 		Ticker: ticker,
 	}
@@ -121,21 +164,50 @@ func (m model) processDataCmd() tea.Msg {
 // --- Bubbletea Update ---
 // Update handles messages and updates the model.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// If we are in a loading state, we only listen for spinner ticks and results.
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case webUILaunchedMsg:
+		m.serverInfoMessage = fmt.Sprintf("Web server launched at: %s", msg.url)
+		return m, nil
+	}
+
+	if m.processingComplete {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				answer := strings.ToLower(m.launchUIPrompt.Value())
+				m = m.reset()
+				if answer == "y" {
+					return m, m.launchWebUICmd
+				}
+				// Just clear the screen and show the fresh form
+				// return m, tea.ClearScreen
+				return m, textinput.Blink
+			case "ctrl+c", "q", "esc":
+				return m, tea.Quit
+			}
+		}
+		m.launchUIPrompt, cmd = m.launchUIPrompt.Update(msg)
+		return m, cmd
+	}
+
 	if m.loadingMessage != "" {
 		switch msg := msg.(type) {
 		case spinner.TickMsg:
-			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
 			return m, cmd
 		case processSuccessMsg:
 			m.loadingMessage = ""
 			m.successMessage = fmt.Sprintf("Success! Wrote %d records to %s", msg.recordCount, msg.fileName)
-			return m, tea.Quit // Quit after success
+			m.processingComplete = true
+			m.resultFileName = msg.fileName
+			return m, m.launchUIPrompt.Focus()
 		case processErrorMsg:
 			m.loadingMessage = ""
 			m.err = msg.err
-			return m, tea.Quit // Quit after error
+			return m, tea.Quit
 		default:
 			return m, nil
 		}
@@ -187,7 +259,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	cmd := m.updateInputs(msg)
+	cmd = m.updateInputs(msg)
 	return m, cmd
 }
 
@@ -207,8 +279,11 @@ func (m model) View() string {
 		return fmt.Sprintf("\nAn error occurred: %s\n\n", errorMessageStyle.Render(m.err.Error()))
 	}
 
-	if m.successMessage != "" {
-		return fmt.Sprintf("\n%s\n\n", successMessageStyle.Render(m.successMessage))
+	if m.processingComplete && m.successMessage != "" {
+		return fmt.Sprintf("\n%s\n\n%s\n",
+			successMessageStyle.Render(m.successMessage),
+			m.launchUIPrompt.View(),
+		)
 	}
 
 	if m.loadingMessage != "" {
@@ -216,8 +291,15 @@ func (m model) View() string {
 	}
 
 	var b strings.Builder
+
+	if m.serverInfoMessage != "" {
+		fmt.Fprintln(&b, successMessageStyle.Render(m.serverInfoMessage))
+		fmt.Fprintln(&b)
+	}
+
 	fmt.Fprintln(&b, "Enter stock information for analysis.")
 	fmt.Fprintln(&b)
+
 	for i := range m.inputs {
 		fmt.Fprintln(&b, m.inputs[i].View())
 	}
@@ -227,5 +309,6 @@ func (m model) View() string {
 	}
 	fmt.Fprintf(&b, "\n%s\n\n", button)
 	fmt.Fprintln(&b, helpStyle.Render("tab: next field • q: quit"))
+
 	return b.String()
 }
