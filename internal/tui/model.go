@@ -30,11 +30,12 @@ var (
 	errorMessageStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 )
 
-// --- Custom Messages for data processing pipeline ---
+const maxLogMessages = 20
 
 type processSuccessMsg struct {
 	recordCount int
 	fileName    string
+	logs        []string
 }
 
 type processErrorMsg struct {
@@ -45,29 +46,47 @@ type webUILaunchedMsg struct {
 	url string
 }
 
-// --- Bubbletea Model ---
-
+// Defines the state space of the Bubbletea TUI
 type model struct {
 	pipelines  *pipelines.Pipelines
 	focusIndex int
 	// todo maybe update below naming to be specific to stock ticker and dates, not just "inputs"
 	inputs             []textinput.Model
 	spinner            spinner.Model
-	loadingMessage     string
-	successMessage     string
+	loading            bool
 	err                error
 	processingComplete bool
 	resultFileName     string
 	launchUIPrompt     textinput.Model
-	serverInfoMessage  string
+	logs               []string
+	width              int
+	height             int
+}
+
+func (m model) reset() model {
+	for i := range m.inputs {
+		m.inputs[i].Reset()
+	}
+	m.launchUIPrompt.Reset()
+	m.focusIndex = 0
+	m.inputs[0].Focus()
+	m.loading = false
+	m.processingComplete = true
+	m.resultFileName = ""
+	m.err = nil
+
+	return m
 }
 
 // Defines the initial state of the TUI
 func NewModel(pipelines *pipelines.Pipelines) model {
 	m := model{
 		inputs:    make([]textinput.Model, 3),
+		logs:      make([]string, 0),
 		pipelines: pipelines,
 	}
+
+	m.logMessage("Welcome! Enter a stock ticker to begin analysis.")
 
 	m.spinner = spinner.New()
 	m.spinner.Spinner = spinner.Dot
@@ -110,26 +129,15 @@ func NewModel(pipelines *pipelines.Pipelines) model {
 	return m
 }
 
-func (m model) Init() tea.Cmd {
-	return textinput.Blink
+func (m *model) logMessage(msg string) {
+	m.logs = append(m.logs, msg)
+	if len(m.logs) > maxLogMessages {
+		m.logs = m.logs[1:]
+	}
 }
 
-func (m model) reset() model {
-	for i := range m.inputs {
-		m.inputs[i].Reset()
-	}
-	m.launchUIPrompt.Reset()
-
-	m.inputs[0].Focus()
-	m.focusIndex = 0
-
-	m.processingComplete = false
-	m.successMessage = ""
-	m.resultFileName = ""
-	m.err = nil
-	m.serverInfoMessage = ""
-
-	return m
+func (m model) Init() tea.Cmd {
+	return textinput.Blink
 }
 
 func (m model) launchWebUICmd() tea.Msg {
@@ -141,10 +149,9 @@ func (m model) launchWebUICmd() tea.Msg {
 	return webUILaunchedMsg{url: url}
 }
 
-// --- Functionality Commands ---
 func (m model) processDataCmd() tea.Msg {
 	ticker := m.inputs[0].Value()
-
+	m.logMessage(fmt.Sprintf("Fetching data for %s...", ticker))
 	// todo need to take in date ranges you goof, you forgot them
 	lynchFairValueInputs := pipelines.LynchFairValueInputs{
 		Ticker: ticker,
@@ -158,157 +165,166 @@ func (m model) processDataCmd() tea.Msg {
 	return processSuccessMsg{
 		recordCount: lynchFairValueOutputs.RecordCount,
 		fileName:    lynchFairValueOutputs.FileName,
+		logs:        lynchFairValueOutputs.Logs,
 	}
 }
 
 // --- Bubbletea Update ---
-// Update handles messages and updates the model.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case webUILaunchedMsg:
-		m.serverInfoMessage = fmt.Sprintf("Web server launched at: %s", msg.url)
-		return m, nil
-	}
 
-	if m.processingComplete {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				answer := strings.ToLower(m.launchUIPrompt.Value())
-				m = m.reset()
-				if answer == "y" {
-					return m, m.launchWebUICmd
-				}
-				// Just clear the screen and show the fresh form
-				// return m, tea.ClearScreen
-				return m, textinput.Blink
-			case "ctrl+c", "q", "esc":
-				return m, tea.Quit
-			}
-		}
-		m.launchUIPrompt, cmd = m.launchUIPrompt.Update(msg)
-		return m, cmd
-	}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 
-	if m.loadingMessage != "" {
-		switch msg := msg.(type) {
-		case spinner.TickMsg:
+	case spinner.TickMsg:
+		if m.loading {
 			m.spinner, cmd = m.spinner.Update(msg)
 			return m, cmd
-		case processSuccessMsg:
-			m.loadingMessage = ""
-			m.successMessage = fmt.Sprintf("Success! Wrote %d records to %s", msg.recordCount, msg.fileName)
-			m.processingComplete = true
-			m.resultFileName = msg.fileName
-			return m, m.launchUIPrompt.Focus()
-		case processErrorMsg:
-			m.loadingMessage = ""
-			m.err = msg.err
-			return m, tea.Quit
-		default:
-			return m, nil
 		}
-	}
 
-	switch msg := msg.(type) {
+	case processSuccessMsg:
+		m.loading = false
+		m.processingComplete = true
+		m.resultFileName = msg.fileName
+		for _, log := range msg.logs {
+			m.logMessage(log)
+		}
+		cmd = m.launchUIPrompt.Focus()
+		return m, cmd
+
+	case processErrorMsg:
+		m.loading = false
+		m.err = msg.err
+		m.logMessage(fmt.Sprintf("Error: %v", msg.err))
+
+		return m, nil
+
+	case webUILaunchedMsg:
+		m.logMessage(fmt.Sprintf("Web server running at %s. Open browser to:", msg.url))
+		return m, nil
+
 	case tea.KeyMsg:
+		if m.processingComplete {
+			if msg.String() == "enter" {
+				answer := strings.ToLower(m.launchUIPrompt.Value())
+				if answer == "y" {
+					cmds = append(cmds, m.launchWebUICmd)
+				}
+				m = m.reset()
+				cmds = append(cmds, textinput.Blink)
+				return m, tea.Batch(cmds...)
+			}
+			m.launchUIPrompt, cmd = m.launchUIPrompt.Update(msg)
+			return m, cmd
+		}
+
+		// --- Handle main form ---
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
-
-		// Intended to handle navigation between inputs and submitting the form
 		case "tab", "shift+tab", "enter", "up", "down":
 			s := msg.String()
-
-			// Enter keystroke on the "Submit" button
 			if s == "enter" && m.focusIndex == len(m.inputs) {
-				m.loadingMessage = "Processing data..."
-
+				m.loading = true
 				return m, tea.Batch(m.spinner.Tick, m.processDataCmd)
 			}
-
 			if s == "up" || s == "shift+tab" {
 				m.focusIndex--
 			} else {
 				m.focusIndex++
 			}
-
 			if m.focusIndex > len(m.inputs) {
 				m.focusIndex = 0
 			} else if m.focusIndex < 0 {
 				m.focusIndex = len(m.inputs)
 			}
-
-			cmds := make([]tea.Cmd, len(m.inputs))
-			for i := 0; i <= len(m.inputs)-1; i++ {
+			for i := 0; i < len(m.inputs); i++ {
 				if i == m.focusIndex {
-					cmds[i] = m.inputs[i].Focus()
+					cmds = append(cmds, m.inputs[i].Focus())
 					m.inputs[i].PromptStyle = focusedStyle
 					m.inputs[i].TextStyle = focusedStyle
-					continue
+				} else {
+					m.inputs[i].Blur()
+					m.inputs[i].PromptStyle = noStyle
+					m.inputs[i].TextStyle = noStyle
 				}
-				m.inputs[i].Blur()
-				m.inputs[i].PromptStyle = noStyle
-				m.inputs[i].TextStyle = noStyle
 			}
-
 			return m, tea.Batch(cmds...)
 		}
 	}
 
-	cmd = m.updateInputs(msg)
-	return m, cmd
-}
-
-func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
-	cmds := make([]tea.Cmd, len(m.inputs))
 	for i := range m.inputs {
-		if i == m.focusIndex {
-			m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
+		if m.inputs[i].Focused() {
+			m.inputs[i], cmd = m.inputs[i].Update(msg)
+			cmds = append(cmds, cmd)
 		}
 	}
-	return tea.Batch(cmds...)
+
+	return m, tea.Batch(cmds...)
 }
 
 // --- Bubbletea View ---
 func (m model) View() string {
-	if m.err != nil {
-		return fmt.Sprintf("\nAn error occurred: %s\n\n", errorMessageStyle.Render(m.err.Error()))
-	}
+	// Define pane widths
+	paneWidth := m.width / 2
 
-	if m.processingComplete && m.successMessage != "" {
-		return fmt.Sprintf("\n%s\n\n%s\n",
-			successMessageStyle.Render(m.successMessage),
-			m.launchUIPrompt.View(),
-		)
-	}
-
-	if m.loadingMessage != "" {
-		return fmt.Sprintf("\n   %s %s... press q to quit\n\n", m.spinner.View(), m.loadingMessage)
-	}
-
-	var b strings.Builder
-
-	if m.serverInfoMessage != "" {
-		fmt.Fprintln(&b, successMessageStyle.Render(m.serverInfoMessage))
-		fmt.Fprintln(&b)
-	}
-
-	fmt.Fprintln(&b, "Enter stock information for analysis.")
-	fmt.Fprintln(&b)
-
+	// --- Left Pane: The Form ---
+	var form strings.Builder
 	for i := range m.inputs {
-		fmt.Fprintln(&b, m.inputs[i].View())
+		form.WriteString(m.inputs[i].View() + "\n")
 	}
-	button := "[ Submit ]"
-	if m.focusIndex == len(m.inputs) {
-		button = focusedStyle.Render("[ Submit ]")
-	}
-	fmt.Fprintf(&b, "\n%s\n\n", button)
-	fmt.Fprintln(&b, helpStyle.Render("tab: next field • q: quit"))
+	form.WriteString("\n")
 
-	return b.String()
+	if m.loading {
+		form.WriteString(m.spinner.View() + " Processing...")
+	} else if m.processingComplete {
+		form.WriteString(m.launchUIPrompt.View())
+	} else {
+		button := "[ Submit ]"
+		if m.focusIndex == len(m.inputs) {
+			button = focusedStyle.Render("[ Submit ]")
+		}
+		form.WriteString(button)
+	}
+	form.WriteString("\n\n" + helpStyle.Render("tab: next field • q: quit"))
+
+	formPaneStyle := lipgloss.NewStyle().
+		Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("63"))
+
+	// --- Right Pane: The Logs ---
+	logHeader := lipgloss.NewStyle().
+		Padding(0, 1).
+		Bold(true).
+		Background(lipgloss.Color("63")).
+		Render("Logs")
+
+	availableHeight := max(m.height-5, 0)
+
+	start := 0
+	if len(m.logs) > availableHeight {
+		start = len(m.logs) - availableHeight
+	}
+	logContent := strings.Join(m.logs[start:], "\n")
+
+	logPaneStyle := lipgloss.NewStyle().
+		Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("240"))
+
+	return lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		formPaneStyle.
+			Width(paneWidth-10).
+			Height(m.height-10).
+			Render(form.String()),
+		logPaneStyle.Width(m.width-paneWidth-10).
+			Height(m.height-10).
+			Render(logHeader+"\n"+logContent),
+	)
 }

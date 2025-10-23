@@ -38,13 +38,14 @@ type mockParquetWriter struct {
 	receivedData         []types.CombinedPriceRecord
 }
 
-func (m *mockParquetWriter) WriteCombinedPriceDataToParquet(records []types.CombinedPriceRecord, writer io.WriteCloser) error {
+func (m *mockParquetWriter) WriteCombinedPriceDataToParquet(records []types.CombinedPriceRecord, writer io.WriteCloser) (string, error) {
 	m.wasCalled = true
 	m.receivedData = records
 	if m.shouldReturnWriteErr {
-		return errors.New("mock parquet write error")
+		return "", errors.New("mock parquet write error")
 	}
-	return nil
+	// Return a mock log message on success
+	return "mock write success log", nil
 }
 
 // --- Test Suite ---

@@ -26,6 +26,7 @@ type LynchFairValueOutputs struct {
 	RecordCount       int
 	FileName          string
 	CombinedPriceData []types.CombinedPriceRecord
+	Logs              []string
 }
 
 func NewLynchFairValuePipeline(client APIClient, writer ParquetWriter) *LynchFairValuePipeline {
@@ -72,7 +73,8 @@ func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*Lynch
 	}
 	defer fw.Close()
 
-	if err := p.parquetWriter.WriteCombinedPriceDataToParquet(combinedData, fw); err != nil {
+	writeLogMessage, err := p.parquetWriter.WriteCombinedPriceDataToParquet(combinedData, fw)
+	if err != nil {
 		return nil, fmt.Errorf("failed to write parquet data: %w", err)
 	}
 
@@ -80,6 +82,7 @@ func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*Lynch
 		RecordCount:       len(dailyPricesRecords),
 		FileName:          fileName,
 		CombinedPriceData: combinedData,
+		Logs:              []string{writeLogMessage},
 	}
 
 	return output, nil

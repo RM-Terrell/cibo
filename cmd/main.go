@@ -24,13 +24,13 @@ func main() {
 	}
 
 	apiClient := api.NewClient(cfg.AlphaVantageAPIKey)
-	parquetWriter := io.NewParquetIOAdapter()
+	parquetWriter := io.NewParquetClient()
 
 	pipelines := pipelines.NewPipelines(apiClient, parquetWriter)
 
 	p := tea.NewProgram(tui.NewModel(pipelines))
 
 	if _, err := p.Run(); err != nil {
-		log.Fatalf("Alas, there's been an error: %v", err)
+		log.Fatalf("There's been an error: %v", err)
 	}
 }

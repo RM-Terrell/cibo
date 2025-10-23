@@ -9,118 +9,157 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// --- Mock Implementations for Testing
-
-// mockFairValuePipeline is a mock implementation of the FairValuePipeline interface.
-// It allows us to control the pipeline's behavior and verify its usage during tests.
 type mockFairValuePipeline struct {
 	shouldReturnErr bool
 	outputToReturn  *pipelines.LynchFairValueOutputs
-
-	// Fields to inspect the mock's state after the test
-	wasCalled      bool
-	receivedTicker string
+	wasCalled       bool
+	receivedTicker  string
 }
 
-// RunPipeline implements the FairValuePipeline interface for our mock.
 func (m *mockFairValuePipeline) RunPipeline(input pipelines.LynchFairValueInputs) (*pipelines.LynchFairValueOutputs, error) {
 	m.wasCalled = true
 	m.receivedTicker = input.Ticker
-
 	if m.shouldReturnErr {
 		return nil, errors.New("mock pipeline error")
 	}
 	return m.outputToReturn, nil
 }
 
-// Helper that calls the Update method and performs the necessary type assertion,
-// reducing boilerplate in the test when Update calls have to be run
 func dispatch(m model, msg tea.Msg) (model, tea.Cmd) {
 	newModel, cmd := m.Update(msg)
 	return newModel.(model), cmd
 }
 
-// Simulates the Bubble Tea runtime by executing a command and dispatching
-// its resulting message(s) back into the model's Update loop. It handles both
-// single and batched commands.
 func processCmd(m model, cmd tea.Cmd) model {
 	if cmd == nil {
 		return m
 	}
-
 	msg := cmd()
-
 	if batchMsg, ok := msg.(tea.BatchMsg); ok {
 		for _, subCmd := range batchMsg {
-			m = processCmd(m, subCmd) // Recursively process, in case of nested batches
+			m = processCmd(m, subCmd)
 		}
 		return m
 	}
-
-	// If it's a single message, just dispatch it
 	m, _ = dispatch(m, msg)
 	return m
 }
 
-// Given a user who fills out the fair value form and submits it successfully,
-// verify that the TUI correctly calls the pipeline and displays the success message.
+// Helper to check if any log message contains a specific substring.
+func containsLog(logs []string, substr string) bool {
+	for _, log := range logs {
+		if strings.Contains(log, substr) {
+			return true
+		}
+	}
+	return false
+}
+
+// --- Tests ---
+
+// Given a user who fills out the form and submits it successfully,
+// verify that the TUI calls the pipeline and logs the success messages.
 func TestTUI_HappyPath_Success(t *testing.T) {
 	mockPipeline := &mockFairValuePipeline{
 		outputToReturn: &pipelines.LynchFairValueOutputs{
 			RecordCount: 13,
 			FileName:    "NVDA.parquet",
+			// This now mimics the message from io.WriteCombinedPriceDataToParquet
+			Logs: []string{"Successfully wrote 13 combined records to Parquet file"},
 		},
 	}
-
-	rootPipelines := &pipelines.Pipelines{
-		LynchFairValue: mockPipeline,
-	}
-
+	rootPipelines := &pipelines.Pipelines{LynchFairValue: mockPipeline}
 	m := NewModel(rootPipelines)
 	var cmd tea.Cmd
 
-	// Simulate the user typing a ticker into the first input.
+	// Simulate typing a ticker.
 	for _, char := range "NVDA" {
 		m, _ = dispatch(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{char}})
 	}
 
-	// Verify the input text is correct.
+	// Verify input text.
 	if m.inputs[0].Value() != "NVDA" {
-		t.Errorf("Expected input value to be 'NVDA', but got '%s'", m.inputs[0].Value())
+		t.Errorf("Expected input value 'NVDA', got '%s'", m.inputs[0].Value())
 	}
 
 	// Simulate navigating to the "Submit" button.
-	m, _ = dispatch(m, tea.KeyMsg{Type: tea.KeyTab}) // Focus moves to input 1
-	m, _ = dispatch(m, tea.KeyMsg{Type: tea.KeyTab}) // Focus moves to input 2
-	m, _ = dispatch(m, tea.KeyMsg{Type: tea.KeyTab}) // Focus moves to Submit button
+	for i := 0; i < 3; i++ {
+		m, _ = dispatch(m, tea.KeyMsg{Type: tea.KeyTab})
+	}
 
 	// Verify focus is on the submit button.
 	if m.focusIndex != len(m.inputs) {
-		t.Errorf("Expected focusIndex to be on the submit button (%d), but got %d", len(m.inputs), m.focusIndex)
+		t.Errorf("Expected focus on submit button (%d), got %d", len(m.inputs), m.focusIndex)
 	}
 
-	// Simulate pressing "Enter" to submit the form.
+	// Simulate pressing "Enter" to submit.
 	m, cmd = dispatch(m, tea.KeyMsg{Type: tea.KeyEnter})
 
 	// Verify the model is now in a loading state.
-	if m.loadingMessage == "" {
-		t.Fatal("Expected model to be in a loading state, but loadingMessage was empty")
+	if !m.loading {
+		t.Fatal("Expected model.loading to be true, but it was false")
 	}
 
+	// Process the command returned by the submission (which runs the pipeline).
 	m = processCmd(m, cmd)
 
+	// Verify the pipeline was called correctly.
 	if !mockPipeline.wasCalled {
-		t.Error("Expected the pipeline's RunPipeline method to be called, but it was not.")
+		t.Error("Expected pipeline's RunPipeline method to be called")
 	}
 	if mockPipeline.receivedTicker != "NVDA" {
-		t.Errorf("Expected pipeline to receive ticker 'NVDA', but got '%s'", mockPipeline.receivedTicker)
+		t.Errorf("Expected pipeline to receive ticker 'NVDA', got '%s'", mockPipeline.receivedTicker)
 	}
 
-	if m.successMessage == "" {
-		t.Fatal("Expected a success message, but it was empty")
+	// Verify the model is no longer loading and is now in the completion state.
+	if m.loading {
+		t.Error("Expected model.loading to be false after processing")
 	}
-	expectedSuccessText := "Success! Wrote 13 records to NVDA.parquet"
-	if !strings.Contains(m.successMessage, expectedSuccessText) {
-		t.Errorf("Expected success message to contain '%s', but got '%s'", expectedSuccessText, m.successMessage)
+	if !m.processingComplete {
+		t.Error("Expected model.processingComplete to be true after success")
+	}
+
+	// Verify the logs contain the expected success messages.
+	expectedLogText := "Successfully wrote 13 combined records to Parquet file"
+	if !containsLog(m.logs, expectedLogText) {
+		t.Errorf("Expected logs to contain '%s', but they did not. Logs: %v", expectedLogText, m.logs)
+	}
+}
+
+// Given a user who submits the form but the pipeline returns an error,
+// verify that the TUI logs the error message correctly.
+func TestTUI_PipelineError(t *testing.T) {
+	mockPipeline := &mockFairValuePipeline{shouldReturnErr: true}
+	rootPipelines := &pipelines.Pipelines{LynchFairValue: mockPipeline}
+	m := NewModel(rootPipelines)
+	var cmd tea.Cmd
+
+	// Simulate typing a ticker and submitting the form.
+	m.inputs[0].SetValue("TSLA")
+	m.focusIndex = len(m.inputs) // Move focus to submit button
+	m, cmd = dispatch(m, tea.KeyMsg{Type: tea.KeyEnter})
+
+	// Verify loading state.
+	if !m.loading {
+		t.Fatal("Expected model.loading to be true")
+	}
+
+	// Process the command.
+	m = processCmd(m, cmd)
+
+	// Verify the loading state is now false.
+	if m.loading {
+		t.Error("Expected model.loading to be false after error")
+	}
+
+	// Verify the model is NOT in the completion state.
+	if m.processingComplete {
+		t.Error("Expected model.processingComplete to be false after an error")
+	}
+
+	// Verify the logs contain the error message.
+	expectedErrorText := "Error: mock pipeline error"
+	if !containsLog(m.logs, expectedErrorText) {
+		t.Errorf("Expected logs to contain '%s', but they did not. Logs: %v", expectedErrorText, m.logs)
 	}
 }

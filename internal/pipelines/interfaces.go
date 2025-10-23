@@ -28,7 +28,7 @@ type APIClient interface {
 }
 
 type ParquetWriter interface {
-	WriteCombinedPriceDataToParquet(records []types.CombinedPriceRecord, writer io.WriteCloser) error
+	WriteCombinedPriceDataToParquet(records []types.CombinedPriceRecord, writer io.WriteCloser) (string, error)
 }
 
 type FairValuePipeline interface {

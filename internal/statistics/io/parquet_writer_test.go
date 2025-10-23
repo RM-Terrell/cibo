@@ -32,12 +32,15 @@ func TestWriteCombinedDataHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create file writer: %v", err)
 	}
-	err = WriteCombinedPriceDataToParquet(combinedData, fw)
-	if closeErr := fw.Close(); closeErr != nil {
-		t.Fatalf("Failed to close file writer: %v", closeErr)
-	}
+
+	client := NewParquetClient()
+	_, err = client.WriteCombinedPriceDataToParquet(combinedData, fw)
 	if err != nil {
 		t.Fatalf("WriteCombinedPriceData returned an unexpected error: %v", err)
+	}
+
+	if closeErr := fw.Close(); closeErr != nil {
+		t.Fatalf("Failed to close file writer: %v", closeErr)
 	}
 
 	fr, _ := local.NewLocalFileReader(filePath)
@@ -77,10 +80,15 @@ func TestOnlyDailyDefensiveWriting(t *testing.T) {
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "daily_only.parquet")
 	fw, _ := local.NewLocalFileWriter(filePath)
-	err := WriteCombinedPriceDataToParquet(combinedData, fw)
-	fw.Close()
+
+	client := NewParquetClient()
+	_, err := client.WriteCombinedPriceDataToParquet(combinedData, fw)
 	if err != nil {
 		t.Fatalf("WriteCombinedPriceData returned an unexpected error: %v", err)
+	}
+
+	if closeErr := fw.Close(); closeErr != nil {
+		t.Fatalf("Failed to close file writer: %v", closeErr)
 	}
 
 	fr, _ := local.NewLocalFileReader(filePath)
@@ -102,8 +110,12 @@ func TestWriteCombineEmptyDaily(t *testing.T) {
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "empty.parquet")
 	fw, _ := local.NewLocalFileWriter(filePath)
-	err := WriteCombinedPriceDataToParquet(combinedDataEmpty, fw)
-	fw.Close()
+
+	client := NewParquetClient()
+	_, err := client.WriteCombinedPriceDataToParquet(combinedDataEmpty, fw)
+	if closeErr := fw.Close(); closeErr != nil {
+		t.Fatalf("Failed to close file writer: %v", closeErr)
+	}
 
 	if err != nil {
 		t.Fatalf("WriteCombinedPriceData with empty input returned an error: %v", err)
