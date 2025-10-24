@@ -1,5 +1,3 @@
-// internal/io/write_file.go
-
 package io
 
 import (
@@ -7,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/xitongsys/parquet-go-source/local"
+	"github.com/xitongsys/parquet-go/reader"
 	"github.com/xitongsys/parquet-go/source"
 	"github.com/xitongsys/parquet-go/writer"
 )
@@ -45,4 +45,32 @@ func (p *ParquetClient) WriteCombinedPriceDataToParquet(
 
 	successMessage := fmt.Sprintf("Successfully wrote %d combined records to Parquet file", len(combinedDataParquet))
 	return successMessage, nil
+}
+
+// Read price data from a parquet file.
+func (p *ParquetClient) ReadCombinedPriceDataFromParquet(filePath string) ([]types.CombinedPriceRecordParquet, error) {
+	fr, err := local.NewLocalFileReader(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open parquet file: %w", err)
+	}
+	defer fr.Close()
+
+	pr, err := reader.NewParquetReader(fr, new(types.CombinedPriceRecordParquet), 4)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create parquet reader: %w", err)
+	}
+	defer pr.ReadStop()
+
+	numRecords := int(pr.GetNumRows())
+	records := make([]types.CombinedPriceRecordParquet, numRecords)
+
+	if numRecords == 0 {
+		return records, nil // Return empty slice for empty file
+	}
+
+	if err := pr.Read(&records); err != nil {
+		return nil, fmt.Errorf("failed to read records from parquet file: %w", err)
+	}
+
+	return records, nil
 }

@@ -21,11 +21,12 @@ UI library built on the ELM architecture, with the "Update()" cycle acting as a 
 Docs on Bubble Tea can be found here: github.com/charmbracelet/bubbletea
 */
 var (
-	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	blurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	cursorStyle         = focusedStyle
-	noStyle             = lipgloss.NewStyle()
-	helpStyle           = blurredStyle
+	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	cursorStyle  = focusedStyle
+	noStyle      = lipgloss.NewStyle()
+	helpStyle    = blurredStyle
+	// todo use these in the logs pane
 	successMessageStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
 	errorMessageStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 )
@@ -145,7 +146,7 @@ func (m model) launchWebUICmd() tea.Msg {
 	if err != nil {
 		return processErrorMsg{err: err}
 	}
-	go web.Start(listener, m.resultFilePath)
+	web.StartNonBlocking(listener, m.resultFilePath)
 	return webUILaunchedMsg{url: url}
 }
 

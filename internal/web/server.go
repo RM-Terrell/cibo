@@ -1,16 +1,19 @@
 package web
 
 import (
-	"cibo/internal/types"
+	"cibo/internal/statistics/io"
+
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
 	"net"
 	"net/http"
-
-	"github.com/xitongsys/parquet-go-source/local"
-	"github.com/xitongsys/parquet-go/reader"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func PrepareListener() (net.Listener, string, error) {
@@ -23,41 +26,65 @@ func PrepareListener() (net.Listener, string, error) {
 	return listener, url, nil
 }
 
-func Start(listener net.Listener, filePath string) {
+// Method to handle shared server setup code
+func newServerHandler(filePath string) http.Handler {
 	staticFS, err := fs.Sub(EmbeddedFiles, "static")
 	if err != nil {
-		log.Fatalf("Failed to create sub-filesystem: %v", err)
+		// Using panic here because if embedded files are broken, the app can't run.
+		log.Panicf("Failed to create sub-filesystem: %v", err)
 	}
+
+	parquetClient := io.NewParquetClient()
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
-		fr, err := local.NewLocalFileReader(filePath)
+		records, err := parquetClient.ReadCombinedPriceDataFromParquet(filePath)
 		if err != nil {
+			log.Printf("API ERROR: %v", err)
 			http.Error(w, "Could not read data file", http.StatusInternalServerError)
 			return
 		}
-		defer fr.Close()
-
-		pr, err := reader.NewParquetReader(fr, new(types.CombinedPriceRecord), 4)
-		if err != nil {
-			http.Error(w, "Could not read data file", http.StatusInternalServerError)
-			return
-		}
-		defer pr.ReadStop()
-
-		numRecords := int(pr.GetNumRows())
-		records := make([]types.CombinedPriceRecord, numRecords)
-		if err := pr.Read(&records); err != nil {
-			http.Error(w, "Could not read data file", http.StatusInternalServerError)
-			return
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(records)
 	})
 
-	if err := http.Serve(listener, mux); err != nil {
-		log.Fatalf("HTTP server failed: %v", err)
+	return mux
+}
+
+// StartNonBlocking starts the web server in a goroutine for use with the TUI.
+func StartNonBlocking(listener net.Listener, filePath string) {
+	handler := newServerHandler(filePath)
+	server := &http.Server{Handler: handler}
+
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			// Since this is a background task, we log the error instead of fatally exiting.
+			log.Printf("ERROR: Non-blocking web server failed: %v", err)
+		}
+	}()
+}
+
+// StartServer starts the web server and blocks, handling graceful shutdown.
+func StartServer(listener net.Listener, filePath string) {
+	handler := newServerHandler(filePath)
+	server := &http.Server{Handler: handler}
+
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failed: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutdown signal received, shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 }

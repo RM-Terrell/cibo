@@ -2,11 +2,11 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run Go Tests (go_statistics_engine)",
+            "label": "Run Go Tests (/internal)",
             "type": "shell",
             "command": "go test ./...",
             "options": {
-                "cwd": "${workspaceFolder}/src/stats_engine_go"
+                "cwd": "${workspaceFolder}/internal"
             },
             "group": {
                 "kind": "test",

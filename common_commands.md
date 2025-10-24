@@ -2,17 +2,29 @@
 
 ## Compiling and running
 
+To run the whole application `cd` into `/cmd/` and run
+
 ```bash
 go run .
 ```
 
+To run just the web server, also in `/cmd/` and (assuming the data file is present in the same directory)
+
+```bash
+go run . -webChart ./TICKER_GOES_HERE.parquet
+```
+
 VS Code Command Palette -> Run Task -> Run Go Tests (data_engine). This is configured in `.vscode/tasks.json`.
 
-## Delv Debugger
+## Debugging
+
+To manually invoke the `dlv` debugger you can just run
 
 ```bash
 dlv
 ```
+
+Debugging the running application can be done via VS Code however, as defined in `.vscode/launch.json`. To debug the whole application just select the config desired in the Debug panel of VS Code and launch it via the green play button. That will launch both the dlv based vs code debugger, and the application itself in a terminal window. Interacting with the application will now trip break points.
 
 ## Unit testing
 
