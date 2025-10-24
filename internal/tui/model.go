@@ -34,7 +34,7 @@ const maxLogMessages = 20
 
 type processSuccessMsg struct {
 	recordCount int
-	fileName    string
+	filePath    string
 	logs        []string
 }
 
@@ -56,7 +56,7 @@ type model struct {
 	loading            bool
 	err                error
 	processingComplete bool
-	resultFileName     string
+	resultFilePath     string
 	launchUIPrompt     textinput.Model
 	logs               []string
 	width              int
@@ -72,7 +72,7 @@ func (m model) reset() model {
 	m.inputs[0].Focus()
 	m.loading = false
 	m.processingComplete = true
-	m.resultFileName = ""
+	m.resultFilePath = ""
 	m.err = nil
 
 	return m
@@ -145,7 +145,7 @@ func (m model) launchWebUICmd() tea.Msg {
 	if err != nil {
 		return processErrorMsg{err: err}
 	}
-	go web.Start(listener, m.resultFileName)
+	go web.Start(listener, m.resultFilePath)
 	return webUILaunchedMsg{url: url}
 }
 
@@ -164,7 +164,7 @@ func (m model) processDataCmd() tea.Msg {
 
 	return processSuccessMsg{
 		recordCount: lynchFairValueOutputs.RecordCount,
-		fileName:    lynchFairValueOutputs.FileName,
+		filePath:    lynchFairValueOutputs.FilePath,
 		logs:        lynchFairValueOutputs.Logs,
 	}
 }
@@ -189,7 +189,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case processSuccessMsg:
 		m.loading = false
 		m.processingComplete = true
-		m.resultFileName = msg.fileName
+		m.resultFilePath = msg.filePath
 		for _, log := range msg.logs {
 			m.logMessage(log)
 		}

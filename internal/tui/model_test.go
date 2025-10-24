@@ -63,7 +63,7 @@ func TestTUI_HappyPath_Success(t *testing.T) {
 	mockPipeline := &mockFairValuePipeline{
 		outputToReturn: &pipelines.LynchFairValueOutputs{
 			RecordCount: 13,
-			FileName:    "NVDA.parquet",
+			FilePath:    "NVDA.parquet",
 			// This now mimics the message from io.WriteCombinedPriceDataToParquet
 			Logs: []string{"Successfully wrote 13 combined records to Parquet file"},
 		},

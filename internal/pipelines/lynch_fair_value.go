@@ -5,6 +5,7 @@ import (
 	"cibo/internal/statistics/parse"
 	"cibo/internal/types"
 	"fmt"
+	"path/filepath"
 
 	"github.com/xitongsys/parquet-go-source/local"
 )
@@ -24,7 +25,7 @@ type LynchFairValueInputs struct {
 
 type LynchFairValueOutputs struct {
 	RecordCount       int
-	FileName          string
+	FilePath          string
 	CombinedPriceData []types.CombinedPriceRecord
 	Logs              []string
 }
@@ -78,9 +79,14 @@ func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*Lynch
 		return nil, fmt.Errorf("failed to write parquet data: %w", err)
 	}
 
+	absPath, err := filepath.Abs(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path for '%s': %w", fileName, err)
+	}
+
 	output := &LynchFairValueOutputs{
 		RecordCount:       len(dailyPricesRecords),
-		FileName:          fileName,
+		FilePath:          absPath,
 		CombinedPriceData: combinedData,
 		Logs:              []string{writeLogMessage},
 	}

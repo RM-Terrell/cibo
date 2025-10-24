@@ -69,8 +69,8 @@ func TestLynchFairValuePipeline_RunPipeline_Success(t *testing.T) {
 	}
 	mockWriter := &mockParquetWriter{}
 
-	dummyFileName := "TEST.parquet"
-	defer os.Remove(dummyFileName)
+	dummyFilePath := "/workspaces/cibo/internal/pipelines/TEST.parquet"
+	defer os.Remove(dummyFilePath)
 
 	pipeline := NewLynchFairValuePipeline(mockClient, mockWriter)
 	input := LynchFairValueInputs{Ticker: "TEST"}
@@ -104,8 +104,8 @@ func TestLynchFairValuePipeline_RunPipeline_Success(t *testing.T) {
 	if !mockWriter.wasCalled {
 		t.Error("Expected WriteCombinedPriceDataToParquet to be called, but it was not")
 	}
-	if output.FileName != dummyFileName {
-		t.Errorf("Expected FileName to be '%s', got '%s'", dummyFileName, output.FileName)
+	if output.FilePath != dummyFilePath {
+		t.Errorf("Expected FilePath to be '%s', got '%s'", dummyFilePath, output.FilePath)
 	}
 }
 
@@ -150,8 +150,8 @@ func TestLynchFairValuePipeline_RunPipeline_ParquetWriteError(t *testing.T) {
 	}
 	mockWriter := &mockParquetWriter{shouldReturnWriteErr: true} // This is the failure case
 
-	dummyFileName := "TEST.parquet"
-	defer os.Remove(dummyFileName)
+	dummyFilePath := "TEST.parquet"
+	defer os.Remove(dummyFilePath)
 
 	pipeline := NewLynchFairValuePipeline(mockClient, mockWriter)
 	input := LynchFairValueInputs{Ticker: "TEST"}

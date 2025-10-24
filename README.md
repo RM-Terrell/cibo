@@ -11,6 +11,7 @@ which seemed like an occasionally useful visualization to have. Added onto this 
 - Git
 - VSCode
 - Docker
+- A free alphavantage API key to test against real data (free is limited at 25 a day)
 
 After cloning the application, open the file directory in VS Code, then click the prompt to reopen in a devcontainer. If you don't get the UI prompt you can find the command via the Command Palette. Once the container builds, all needed software should be installed that is required to run it and work on the app including debugging, unit testing, compilation to bins, etc.
 
