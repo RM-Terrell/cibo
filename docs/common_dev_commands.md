@@ -14,8 +14,6 @@ To run just the web server, also in `/cmd/` and (assuming the data file is prese
 go run . -webChart ./TICKER_GOES_HERE.parquet
 ```
 
-VS Code Command Palette -> Run Task -> Run Go Tests (data_engine). This is configured in `.vscode/tasks.json`.
-
 ## Debugging
 
 To manually invoke the `dlv` debugger you can just run
@@ -28,7 +26,11 @@ Debugging the running application can be done via VS Code however, as defined in
 
 ## Unit testing
 
-As part of dev container setup there should be a unit testing extension installed that will both add a "Testing" flask icon on the left side of the editor from which you can run tests, and also add an overlay on unit test code for "run" and "debug" to run them right from the code with one click.
+You can run unit tests via VS Code Tasks:
+
+VS Code Command Palette -> Run Task -> "Run Go Tests <TEST_SUBSET>". This is configured in `.vscode/tasks.json`.
+
+As part of dev container setup there should also be a unit testing extension installed that will both add a "Testing" flask icon on the left side of the editor from which you can run tests, and also add an overlay on unit test code for "run" and "debug" to run them right from the code with one click.
 
 To run the unit test at your cursor use `Command` + `;` followed by `C`, to run all tests in the file use `Command` + `;` followed by `F` (assuming default vs code shortcuts on Mac).
 
