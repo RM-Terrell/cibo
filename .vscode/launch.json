@@ -2,13 +2,26 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch TUI App",
+            "name": "Debug Full Cibo",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd",
             "cwd": "${workspaceFolder}/cmd",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug with mock API",
+            "preLaunchTask": "Start Mock AlphaVantage API",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd",
+            "cwd": "${workspaceFolder}/cmd",
+            "console": "integratedTerminal",
+            "args": [
+                "-mock-api"
+            ]
         }
     ]
 }

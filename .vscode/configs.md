@@ -3,12 +3,16 @@
 
 ## launch.json and debugging
 
-The line
+[Official docs here](https://code.visualstudio.com/docs/debugtest/debugging)
+
+Of note for this application, the line
+
 ```json
 "console": "integratedTerminal"
 ```
 
-is needed to launch a "real" terminal that can be interacted with, which is needed being a TUI application. Youll get
+is needed to launch a "real" terminal that can be interacted with, which is needed being a TUI application. Without it you'll get:
+
 ```console
 Starting: /go/bin/dlv dap --listen=127.0.0.1:33735 --log-dest=3 from /workspaces/cibo/cmd
 DAP server listening at: 127.0.0.1:33735
@@ -20,4 +24,8 @@ Detaching
 dlv dap (8237) exited with code: 0
 ```
 
-without it.
+## Tasks
+
+[Official docs here](https://code.visualstudio.com/docs/debugtest/tasks)
+
+The `tasks.json` file is where I've scripted out common commands. Of note, the mock API server can be launched via a task, and that task is also launched as part of a specific debug config for debugging the application without hitting the live server. If you find yourself runnin things a lot that you think "i could shell script this" do it via a Task.

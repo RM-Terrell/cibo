@@ -21,7 +21,13 @@
                     return;
                 }
 
-                const actualPrices = { x: [], y: [], mode: 'lines', name: 'Actual Price', line: { color: '#1f77b4' } };
+                const actualPrices = { 
+                    x: [], 
+                    y: [], 
+                    mode: 'markers',
+                    name: 'Actual Price', 
+                    marker: { color: '#1f77b4', size: 6 } 
+                };
                 const fairValue = { x: [], y: [], mode: 'lines+markers', name: 'Fair Value', line: { color: '#ff7f0e' } };
 
                 data.forEach(d => {

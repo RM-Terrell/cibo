@@ -16,13 +16,26 @@
                 "echo": true,
                 "reveal": "always",
                 "focus": false,
-                "panel": "shared",
+                "panel": "new",
                 "showReuseMessage": true,
-                "clear": false
+                "clear": false,
             },
             "problemMatcher": [
                 "$go"
             ]
+        },
+        {
+            "label": "Start Mock AlphaVantage API",
+            "type": "shell",
+            "command": "go run ./tools/mock_alpha_vantage_api/main.go",
+            "isBackground": true,
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+            }
         }
     ]
 }
