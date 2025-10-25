@@ -43,6 +43,7 @@ func TestFetchDailyPrice_Success(t *testing.T) {
 	apiClient := &Client{
 		apiKey:     "test_api_key",
 		httpClient: mockClient,
+		baseURL:    "base",
 	}
 	expectedBody := []byte(`{"key":"value"}`)
 
@@ -68,6 +69,7 @@ func TestFetchDailyPrice_NetworkError(t *testing.T) {
 	apiClient := &Client{
 		apiKey:     "test_api_key",
 		httpClient: mockClient,
+		baseURL:    "base",
 	}
 
 	body, err := apiClient.FetchDailyPrice("GOOG")
@@ -97,6 +99,7 @@ func TestFetchDailyPrice_APIReturnsNon200(t *testing.T) {
 	apiClient := &Client{
 		apiKey:     "test_api_key",
 		httpClient: mockClient,
+		baseURL:    "base",
 	}
 	expectedError := "API returned non-200 status code: 404, body: {\"error\":\"symbol not found\"}"
 
@@ -127,6 +130,7 @@ func TestFetchDailyPrice_BodyReadError(t *testing.T) {
 	apiClient := &Client{
 		apiKey:     "test_api_key",
 		httpClient: mockClient,
+		baseURL:    "base",
 	}
 	expectedError := "failed to read response body: simulated read error"
 
@@ -155,7 +159,11 @@ func TestFetchEarnings_Success(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedBody := []byte(`{"annualEarnings":[]}`)
 
 	body, err := apiClient.FetchEarnings("IBM")
@@ -173,7 +181,11 @@ func TestFetchEarnings_NetworkError(t *testing.T) {
 	mockClient := &http.Client{
 		Transport: &MockRoundTripper{Err: errSimulatedNetwork},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 
 	_, err := apiClient.FetchEarnings("IBM")
 
@@ -196,6 +208,7 @@ func TestFetchEarnings_APIReturnsNon200(t *testing.T) {
 	apiClient := &Client{
 		apiKey:     "test_api_key",
 		httpClient: mockClient,
+		baseURL:    "base",
 	}
 	expectedError := "API returned non-200 status code: 404, body: {\"error\":\"symbol not found\"}"
 
@@ -226,6 +239,7 @@ func TestFetchEarnings_BodyReadError(t *testing.T) {
 	apiClient := &Client{
 		apiKey:     "test_api_key",
 		httpClient: mockClient,
+		baseURL:    "base",
 	}
 	expectedError := "failed to read response body: simulated read error"
 
@@ -254,7 +268,11 @@ func TestFetchOverview_Success(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedBody := []byte(`{"Symbol":"IBM"}`)
 
 	body, err := apiClient.FetchOverview("IBM")
@@ -277,7 +295,11 @@ func TestFetchOverview_APIReturnsNon200(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedError := "API returned non-200 status code: 400, body: {\"error\":\"bad request\"}"
 
 	_, err := apiClient.FetchOverview("IBM")
@@ -295,7 +317,11 @@ func TestFetchOverview_NetworkError(t *testing.T) {
 	mockClient := &http.Client{
 		Transport: &MockRoundTripper{Err: errSimulatedNetwork},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 
 	_, err := apiClient.FetchOverview("IBM")
 
@@ -318,6 +344,7 @@ func TestFetchOverview_BodyReadError(t *testing.T) {
 	apiClient := &Client{
 		apiKey:     "test_api_key",
 		httpClient: mockClient,
+		baseURL:    "base",
 	}
 	expectedError := "failed to read response body: simulated read error"
 
@@ -346,7 +373,11 @@ func TestFetchDividends_Success(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedBody := []byte(`{"data":[]}`)
 
 	body, err := apiClient.FetchDividends("IBM")
@@ -369,7 +400,11 @@ func TestFetchDividends_BodyReadError(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedError := "failed to read response body: simulated read error"
 
 	_, err := apiClient.FetchDividends("IBM")
@@ -392,7 +427,11 @@ func TestFetchDividend_APIReturnsNon200(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedError := "API returned non-200 status code: 400, body: {\"error\":\"bad request\"}"
 
 	_, err := apiClient.FetchDividends("IBM")
@@ -410,7 +449,11 @@ func TestFetchDividend_NetworkError(t *testing.T) {
 	mockClient := &http.Client{
 		Transport: &MockRoundTripper{Err: errSimulatedNetwork},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 
 	_, err := apiClient.FetchDividends("IBM")
 
@@ -430,7 +473,11 @@ func TestFetchEarningsEstimates_Success(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedBody := []byte(`{"estimates":[]}`)
 
 	body, err := apiClient.FetchEarningsEstimates("IBM")
@@ -448,7 +495,11 @@ func TestFetchEarningsEstimates_NetworkError(t *testing.T) {
 	mockClient := &http.Client{
 		Transport: &MockRoundTripper{Err: errSimulatedNetwork},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 
 	_, err := apiClient.FetchEarningsEstimates("IBM")
 
@@ -467,7 +518,11 @@ func TestFetchEarningsEstimate_APIReturnsNon200(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedError := "API returned non-200 status code: 400, body: {\"error\":\"bad request\"}"
 
 	_, err := apiClient.FetchEarningsEstimates("IBM")
@@ -490,7 +545,11 @@ func TestFetchEarningsEstimate_BodyReadError(t *testing.T) {
 			},
 		},
 	}
-	apiClient := &Client{apiKey: "test_api_key", httpClient: mockClient}
+	apiClient := &Client{
+		apiKey:     "test_api_key",
+		httpClient: mockClient,
+		baseURL:    "base",
+	}
 	expectedError := "failed to read response body: simulated read error"
 
 	_, err := apiClient.FetchEarningsEstimates("IBM")
@@ -508,7 +567,8 @@ func TestFetchEarningsEstimate_BodyReadError(t *testing.T) {
 // Given a new client, verify that a new client is created with the correct default values.
 func TestNewClient(t *testing.T) {
 	apiKey := "my-secret-key"
-	client := NewClient(apiKey)
+	baseURL := "someBaseUrl"
+	client := NewClient(apiKey, baseURL)
 
 	if diff := cmp.Diff(apiKey, client.apiKey); diff != "" {
 		t.Errorf("NewClient() apiKey mismatch (-want +got):\n%s", diff)
@@ -524,7 +584,7 @@ func TestNewClient(t *testing.T) {
 	}
 
 	numFields := reflect.TypeOf(*client).NumField()
-	if diff := cmp.Diff(2, numFields); diff != "" {
+	if diff := cmp.Diff(3, numFields); diff != "" {
 		t.Errorf("NewClient() struct field count mismatch (-want +got):\n%s", diff)
 	}
 }

@@ -15,12 +15,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+const (
+	alphaVantageURL     = "https://www.alphavantage.co"
+	mockAlphaVantageURL = "http://localhost:8080"
+)
+
 func main() {
-	webChartFilePath := flag.String("webChart", "", "Path to a Parquet file to display in standalone web mode.")
+	webModeFilePath := flag.String("webMode", "", "Path to a Parquet file to display in standalone web mode.")
+	useMockAPI := flag.Bool("mock-api", false, "Use the mock API server instead of Alpha Vantage")
 	flag.Parse()
 
-	if *webChartFilePath != "" {
-		fmt.Printf("Starting server in standalone mode for file: %s\n", *webChartFilePath)
+	if *webModeFilePath != "" {
+		fmt.Printf("Starting server in standalone mode for file: %s\n", *webModeFilePath)
 		listener, url, err := web.PrepareListener()
 		if err != nil {
 			log.Fatalf("Failed to prepare web listener: %v", err)
@@ -29,9 +35,18 @@ func main() {
 		fmt.Printf("Web server starting. Open this URL in your browser: %s\n", url)
 		fmt.Println("Press Ctrl+C to shut down the server.")
 
-		web.StartServer(listener, *webChartFilePath)
+		web.StartServer(listener, *webModeFilePath)
 		fmt.Println("Server shutting down.")
-		return // Exit after server shuts down
+		return
+	}
+
+	var baseURL string
+	if *useMockAPI {
+		baseURL = mockAlphaVantageURL
+		log.Println("Using mock API server.")
+	} else {
+		baseURL = alphaVantageURL
+		log.Println("Using live Alpha Vantage API.")
 	}
 
 	configPath := os.Getenv("API_KEYS_CONFIG_PATH")
@@ -44,7 +59,7 @@ func main() {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
 
-	apiClient := api.NewClient(cfg.AlphaVantageAPIKey)
+	apiClient := api.NewClient(cfg.AlphaVantageAPIKey, baseURL)
 	parquetWriter := io.NewParquetClient()
 
 	pipelines := pipelines.NewPipelines(apiClient, parquetWriter)

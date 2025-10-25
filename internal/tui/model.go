@@ -72,7 +72,7 @@ func (m model) reset() model {
 	m.focusIndex = 0
 	m.inputs[0].Focus()
 	m.loading = false
-	m.processingComplete = true
+	m.processingComplete = false
 	m.resultFilePath = ""
 	m.err = nil
 

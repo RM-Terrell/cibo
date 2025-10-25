@@ -19,14 +19,16 @@ Alphavantage API docs can be found here: https://www.alphavantage.co/documentati
 type Client struct {
 	apiKey     string
 	httpClient *http.Client
+	baseURL    string
 }
 
-func NewClient(apiKey string) *Client {
+func NewClient(apiKey string, baseURL string) *Client {
 	return &Client{
 		apiKey: apiKey,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		baseURL: baseURL,
 	}
 }
 
@@ -50,7 +52,8 @@ func (c *Client) FetchDailyPrice(symbol string) ([]byte, error) {
 	//         "5. volume": "3134882"
 	//     },
 	url := fmt.Sprintf(
-		"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=%s&apikey=%s&outputsize=full",
+		"%s/query?function=TIME_SERIES_DAILY&symbol=%s&apikey=%s&outputsize=full",
+		c.baseURL,
 		symbol,
 		c.apiKey,
 	)
@@ -98,7 +101,8 @@ func (c *Client) FetchEarnings(symbol string) ([]byte, error) {
 	//         "reportTime": "post-market"
 	//      },
 	url := fmt.Sprintf(
-		"https://www.alphavantage.co/query?function=EARNINGS&symbol=%s&apikey=%s",
+		"%s/query?function=EARNINGS&symbol=%s&apikey=%s",
+		c.baseURL,
 		symbol,
 		c.apiKey,
 	)
@@ -183,7 +187,8 @@ func (c *Client) FetchOverview(symbol string) ([]byte, error) {
 	// 	"ExDividendDate": "2025-08-08"
 	// }
 	url := fmt.Sprintf(
-		"https://www.alphavantage.co/query?function=OVERVIEW&symbol=%s&apikey=%s",
+		"%s/query?function=OVERVIEW&symbol=%s&apikey=%s",
+		c.baseURL,
 		symbol,
 		c.apiKey,
 	)
@@ -229,7 +234,8 @@ func (c *Client) FetchDividends(symbol string) ([]byte, error) {
 	//     },
 
 	url := fmt.Sprintf(
-		"https://www.alphavantage.co/query?function=DIVIDENDS&symbol=%s&apikey=%s",
+		"%s/query?function=DIVIDENDS&symbol=%s&apikey=%s",
+		c.baseURL,
 		symbol,
 		c.apiKey,
 	)
@@ -281,7 +287,8 @@ func (c *Client) FetchEarningsEstimates(symbol string) ([]byte, error) {
 	//     },
 	// the next is current year, all after that are historical so just use the first
 	url := fmt.Sprintf(
-		"https://www.alphavantage.co/query?function=EARNINGS_ESTIMATES&symbol=%s&apikey=%s",
+		"%s/query?function=EARNINGS_ESTIMATES&symbol=%s&apikey=%s",
+		c.baseURL,
 		symbol,
 		c.apiKey,
 	)
