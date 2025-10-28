@@ -3,6 +3,7 @@ package pipelines
 import (
 	"cibo/internal/statistics/algos"
 	"cibo/internal/statistics/parse"
+	"cibo/internal/statistics/utils"
 	"cibo/internal/types"
 	"fmt"
 	"path/filepath"
@@ -20,7 +21,9 @@ type LynchFairValuePipeline struct {
 }
 
 type LynchFairValueInputs struct {
-	Ticker string
+	Ticker    string
+	StartDate string
+	EndDate   string
 }
 
 type LynchFairValueOutputs struct {
@@ -38,13 +41,11 @@ func NewLynchFairValuePipeline(client APIClient, writer ParquetWriter) *LynchFai
 }
 
 func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*LynchFairValueOutputs, error) {
-	// todo pass in date ranges here
 	dailyPricesJson, err := p.apiClient.FetchDailyPrice(input.Ticker)
 	if err != nil {
 		return nil, fmt.Errorf("daily prices API fetch failed: %w", err)
 	}
 
-	// todo pass in date ranges here
 	annualEarningsJson, err := p.apiClient.FetchEarnings(input.Ticker)
 	if err != nil {
 		return nil, fmt.Errorf("annual earnings API fetch failed: %w", err)
@@ -60,12 +61,22 @@ func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*Lynch
 		return nil, fmt.Errorf("annual earnings parsing failed: %w", err)
 	}
 
-	fairValuePriceRecords, err := algos.CalculateFairValueHistory(annualEarningsRecords)
+	filteredDailyPrices, err := utils.FilterDailyPricesWithinDateRange(dailyPricesRecords, input.StartDate, input.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to filter daily prices: %w", err)
+	}
+
+	filteredAnnualEarnings, err := utils.FilterAnnualEarningsWithinDateRange(annualEarningsRecords, input.StartDate, input.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to filter annual earnings: %w", err)
+	}
+
+	fairValuePriceRecords, err := algos.CalculateFairValueHistory(filteredAnnualEarnings)
 	if err != nil {
 		return nil, fmt.Errorf("could not calculate fair value: %w", err)
 	}
 
-	combinedData := types.DailyAndFairPriceToCombined(dailyPricesRecords, fairValuePriceRecords)
+	combinedData := types.DailyAndFairPriceToCombined(filteredDailyPrices, fairValuePriceRecords)
 
 	fileName := fmt.Sprintf("%s.parquet", input.Ticker)
 	fw, err := local.NewLocalFileWriter(fileName)
@@ -85,7 +96,7 @@ func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*Lynch
 	}
 
 	output := &LynchFairValueOutputs{
-		RecordCount:       len(dailyPricesRecords),
+		RecordCount:       len(filteredDailyPrices),
 		FilePath:          absPath,
 		CombinedPriceData: combinedData,
 		Logs:              []string{writeLogMessage},

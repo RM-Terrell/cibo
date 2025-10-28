@@ -50,7 +50,7 @@ func (m *mockParquetWriter) WriteCombinedPriceDataToParquet(records []types.Comb
 
 // --- Test Suite ---
 
-// Given that all dependencies succeed, verify that the pipeline runs correctly
+// Given that all minimum required data, verify that the pipeline runs correctly
 // and produces the expected combined data output.
 func TestLynchFairValuePipeline_RunPipeline_Success(t *testing.T) {
 	mockClient := &mockAPIClient{

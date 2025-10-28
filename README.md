@@ -27,9 +27,9 @@ Future pipelines
 ## Needed for local building and development
 
 - Git
-- VSCode
+- VS Code
 - VS Code "Containers Tools" [extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-containers)
-- Docker
+- Docker Desktop
 - A [free Alpha Vantage API key](https://www.alphavantage.co/support/#api-key) to get real data (free is limited at 25 calls a day)
 
 After cloning the application, open the file directory in VS Code (`code .` in the code directory), then click the prompt to reopen in a devcontainer. If you don't get the UI prompt you can find the command via the Command Palette. Once the container builds, all needed software should be installed that is required to run it and work on the app including debugging, unit testing, compilation to bins, etc.

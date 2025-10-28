@@ -33,7 +33,6 @@ func NewClient(apiKey string, baseURL string) *Client {
 }
 
 // Retrieve the raw daily time series data for a given stock symbol.
-// todo add date ranges
 func (c *Client) FetchDailyPrice(symbol string) ([]byte, error) {
 	// {
 	// "Meta Data": {

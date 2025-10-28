@@ -146,7 +146,7 @@ func FairValuePriceHistory(fairValuePE float64, historicalEarnings []types.Annua
 	var fairValuePriceHistory []types.FairValuePriceRecord
 	for _, earning := range historicalEarnings {
 		// You cant really calculate EPS on a negative earnings or you get a negative fair value.
-		// Again, lots of negative values might need to be a case to bubble up to the user
+		// Lots of negative values might need to be a case to bubble up to the user
 		// and suggest using a different analysis. For now, skip and leave a hole in the plot
 		if earning.ReportedEPS > 0 {
 			fairValuePrice := earning.ReportedEPS * fairValuePE

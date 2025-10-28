@@ -49,9 +49,8 @@ type webUILaunchedMsg struct {
 
 // Defines the state space of the Bubbletea TUI
 type model struct {
-	pipelines  *pipelines.Pipelines
-	focusIndex int
-	// todo maybe update below naming to be specific to stock ticker and dates, not just "inputs"
+	pipelines          *pipelines.Pipelines
+	focusIndex         int
 	inputs             []textinput.Model
 	spinner            spinner.Model
 	loading            bool
@@ -152,10 +151,13 @@ func (m model) launchWebUICmd() tea.Msg {
 
 func (m model) processDataCmd() tea.Msg {
 	ticker := m.inputs[0].Value()
+	startDate := m.inputs[1].Value()
+	endDate := m.inputs[2].Value()
 	m.logMessage(fmt.Sprintf("Fetching data for %s...", ticker))
-	// todo need to take in date ranges you goof, you forgot them
 	lynchFairValueInputs := pipelines.LynchFairValueInputs{
-		Ticker: ticker,
+		Ticker:    ticker,
+		StartDate: startDate,
+		EndDate:   endDate,
 	}
 
 	lynchFairValueOutputs, err := m.pipelines.LynchFairValue.RunPipeline(lynchFairValueInputs)
