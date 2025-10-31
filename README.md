@@ -10,7 +10,7 @@ Remember: all models are wrong, but some are useful.
 
 ## Terminal UI based
 
-Built on GO, Bulbbletea, and plotly.js for the web UI, CIBO is a terminal first application for analyzing stock data.
+Built on GO, Bubbletea, and plotly.js for the web UI, CIBO is a terminal first application for analyzing stock data.
 
 ![TUI](./docs/images/tui.png)
 
