@@ -45,23 +45,30 @@ func (p *LynchFairValuePipeline) RunPipeline(input LynchFairValueInputs) (*Lynch
 	if err != nil {
 		return nil, fmt.Errorf("daily prices API fetch failed: %w", err)
 	}
-
 	annualEarningsJson, err := p.apiClient.FetchEarnings(input.Ticker)
 	if err != nil {
 		return nil, fmt.Errorf("annual earnings API fetch failed: %w", err)
+	}
+	stockSplitsJson, err := p.apiClient.FetchStockSplits((input.Ticker))
+	if err != nil {
+		return nil, fmt.Errorf("stock splits API fetch failed: %w", err)
 	}
 
 	dailyPricesRecords, err := parse.ParseDailyPricesToFlat(dailyPricesJson, true)
 	if err != nil {
 		return nil, fmt.Errorf("daily prices parsing failed: %w", err)
 	}
-
 	annualEarningsRecords, err := parse.ParseAnnualEarningsToFlat(annualEarningsJson, true)
 	if err != nil {
 		return nil, fmt.Errorf("annual earnings parsing failed: %w", err)
 	}
+	stockSplitRecords, err := parse.ParseStockSplitsToFlat(stockSplitsJson)
+	if err != nil {
+		return nil, fmt.Errorf("stock splits parsing failed: %w", err)
+	}
 
-	filteredDailyPrices, err := utils.FilterDailyPricesWithinDateRange(dailyPricesRecords, input.StartDate, input.EndDate)
+	adjustedDailyPrices := utils.AdjustForStockSplits(dailyPricesRecords, stockSplitRecords)
+	filteredDailyPrices, err := utils.FilterDailyPricesWithinDateRange(adjustedDailyPrices, input.StartDate, input.EndDate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to filter daily prices: %w", err)
 	}

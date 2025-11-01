@@ -21,14 +21,21 @@ type FairValuePriceRecord struct {
 	Date           string
 }
 
+type StockSplitRecord struct {
+	Ticker        string
+	EffectiveDate string
+	SplitFactor   float64
+}
+
 /*
-Intention of this type is to allow "long" writing of price data. Example:
+Intention of the CombinedPriceRecord type is to allow "long" writing of price data.
+Example:
 
 ticker	date	series	        price
-XYZ	2025-12-29	daily_price.    150.25
-XYZ	2025-12-30	daily_price.    151.00
-XYZ	2025-12-31	daily_price.    150.80
-XYZ	2025-12-31	fair_value	    175.50
+XYZ	2025-12-29	daily_price     150.25
+XYZ	2025-12-30	daily_price     151.00
+XYZ	2025-12-31	daily_price     150.80
+XYZ	2025-12-31	fair_value      175.50
 */
 type CombinedPriceRecord struct {
 	Ticker string

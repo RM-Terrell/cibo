@@ -25,6 +25,5 @@ func LoadConfig(path string) (*APIKeysConfig, error) {
 		return nil, fmt.Errorf("alphavantage API key is missing from config file")
 	}
 
-	fmt.Printf("Successfully loaded configuration from: %s\n", path)
 	return &config, nil
 }

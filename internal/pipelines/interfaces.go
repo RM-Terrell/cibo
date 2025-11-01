@@ -28,6 +28,7 @@ import (
 type APIClient interface {
 	FetchDailyPrice(ticker string) ([]byte, error)
 	FetchEarnings(ticker string) ([]byte, error)
+	FetchStockSplits(ticker string) ([]byte, error)
 }
 
 type ParquetWriter interface {

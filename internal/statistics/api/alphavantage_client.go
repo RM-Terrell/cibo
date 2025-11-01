@@ -310,3 +310,62 @@ func (c *Client) FetchEarningsEstimates(symbol string) ([]byte, error) {
 
 	return bodyBytes, nil
 }
+
+// Retrieve stock split data for a specific ticker
+func (c *Client) FetchStockSplits(symbol string) ([]byte, error) {
+	// https://www.alphavantage.co/query?function=SPLITS&symbol=NVDA&apikey=demo
+	// 	{
+	//     "symbol": "NVDA",
+	//     "data": [
+	//         {
+	//             "effective_date": "2024-06-10",
+	//             "split_factor": "10.0000"
+	//         },
+	//         {
+	//             "effective_date": "2021-07-20",
+	//             "split_factor": "4.0000"
+	//         },
+	//         {
+	//             "effective_date": "2007-09-11",
+	//             "split_factor": "1.5000"
+	//         },
+	//         {
+	//             "effective_date": "2006-04-07",
+	//             "split_factor": "2.0000"
+	//         },
+	//         {
+	//             "effective_date": "2001-09-17",
+	//             "split_factor": "2.0000"
+	//         },
+	//         {
+	//             "effective_date": "2000-06-27",
+	//             "split_factor": "2.0000"
+	//         }
+	//     ]
+	// }
+
+	url := fmt.Sprintf(
+		"%s/query?function=SPLITS&symbol=%s&apikey=%s",
+		c.baseURL,
+		symbol,
+		c.apiKey,
+	)
+
+	resp, err := c.httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make API request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned non-200 status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	return bodyBytes, nil
+}

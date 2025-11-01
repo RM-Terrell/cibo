@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 
 	"cibo/internal/types"
@@ -63,6 +64,12 @@ func ParseDailyPricesToFlat(jsonData []byte, skipErrors bool) ([]types.DailyStoc
 		})
 	}
 
+	// Sort the records by date, descending (newest to oldest), to restore the order
+	// that was lost when unmarshaling into a map.
+	sort.Slice(records, func(i, j int) bool {
+		return records[i].Date > records[j].Date
+	})
+
 	return records, nil
 }
 
@@ -113,6 +120,48 @@ func ParseAnnualEarningsToFlat(jsonData []byte, skipErrors bool) ([]types.Annual
 			Ticker:           ticker,
 			FiscalDateEnding: fiscalDateEnding,
 			ReportedEPS:      reportedEPS,
+		})
+	}
+
+	return records, nil
+}
+
+type StockSplitResponse struct {
+	Symbol string       `json:"symbol"`
+	Data   []SplitEvent `json:"data"`
+}
+
+type SplitEvent struct {
+	EffectiveDate string `json:"effective_date"`
+	SplitFactor   string `json:"split_factor"`
+}
+
+// Takes json data of stock splits and parses it into a collection
+// of individual stock split events.
+func ParseStockSplitsToFlat(jsonData []byte) ([]types.StockSplitRecord, error) {
+	var response StockSplitResponse
+	if err := json.Unmarshal(jsonData, &response); err != nil {
+		return nil, fmt.Errorf("error unmarshaling stock splits json: %w", err)
+	}
+
+	ticker := response.Symbol
+	if ticker == "" {
+		return nil, fmt.Errorf("ticker not found in JSON when parsing stock splits")
+	}
+
+	records := make([]types.StockSplitRecord, 0, len(response.Data))
+	for _, split := range response.Data {
+		splitFactor, err := strconv.ParseFloat(split.SplitFactor, 64)
+		if err != nil {
+			// Skip records with unparseable split factors
+			log.Printf("Warning: could not parse split factor for date %s, skipping record. Error: %v", split.EffectiveDate, err)
+			continue
+		}
+
+		records = append(records, types.StockSplitRecord{
+			Ticker:        ticker,
+			EffectiveDate: split.EffectiveDate,
+			SplitFactor:   splitFactor,
 		})
 	}
 

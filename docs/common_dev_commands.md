@@ -11,7 +11,7 @@ go run .
 To run just the web server, also in `/cmd/` and (assuming the data file is present in the same directory)
 
 ```bash
-go run . -webChart ./TICKER_GOES_HERE.parquet
+go run . -webMode ./TICKER_GOES_HERE.parquet
 ```
 
 ## Debugging

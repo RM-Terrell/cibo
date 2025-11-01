@@ -22,7 +22,7 @@ const (
 
 func main() {
 	webModeFilePath := flag.String("webMode", "", "Path to a Parquet file to display in standalone web mode.")
-	useMockAPI := flag.Bool("mock-api", false, "Use the mock API server instead of Alpha Vantage")
+	useMockAPI := flag.Bool("mockAPI", false, "Use the mock API server.")
 	flag.Parse()
 
 	if *webModeFilePath != "" {
@@ -40,13 +40,15 @@ func main() {
 		return
 	}
 
+	var initialLogs []string
+
 	var baseURL string
 	if *useMockAPI {
 		baseURL = mockAlphaVantageURL
-		log.Println("Using mock API server.")
+		initialLogs = append(initialLogs, "Using mock API server.")
 	} else {
 		baseURL = alphaVantageURL
-		log.Println("Using live Alpha Vantage API.")
+		initialLogs = append(initialLogs, "Using live Alpha Vantage API.")
 	}
 
 	configPath := os.Getenv("API_KEYS_CONFIG_PATH")
@@ -59,12 +61,14 @@ func main() {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
 
+	initialLogs = append(initialLogs, fmt.Sprintf("Successfully loaded configuration from: %s", configPath))
+
 	apiClient := api.NewClient(cfg.AlphaVantageAPIKey, baseURL)
 	parquetWriter := io.NewParquetClient()
 
 	pipelines := pipelines.NewPipelines(apiClient, parquetWriter)
 
-	p := tea.NewProgram(tui.NewModel(pipelines))
+	p := tea.NewProgram(tui.NewModel(pipelines, initialLogs))
 
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("There's been an error: %v", err)

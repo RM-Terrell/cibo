@@ -16,22 +16,28 @@ import (
 The goal of this module is to act as the primary control point for the Terminal UI
 layer, powered by the Bubble Tea library. This library functions via a model (state),
 update, view system that should be familiar to anyone whose worked with Redux or a similar
-UI library built on the ELM architecture, with the "Update()" cycle acting as a familiar state reducer
+UI library built on the ELM architecture, with the "Update()" cycle acting as a state reducer
 
 Docs on Bubble Tea can be found here: github.com/charmbracelet/bubbletea
 */
+
+const maxLogMessages = 20
+
+const (
+	InfoLog LogType = iota
+	SuccessLog
+	ErrorLog
+)
+
 var (
-	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	cursorStyle  = focusedStyle
-	noStyle      = lipgloss.NewStyle()
-	helpStyle    = blurredStyle
-	// todo use these in the logs pane
+	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	blurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	cursorStyle         = focusedStyle
+	noStyle             = lipgloss.NewStyle()
+	helpStyle           = blurredStyle
 	successMessageStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
 	errorMessageStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 )
-
-const maxLogMessages = 20
 
 type processSuccessMsg struct {
 	recordCount int
@@ -47,6 +53,13 @@ type webUILaunchedMsg struct {
 	url string
 }
 
+type LogType int
+
+type LogEntry struct {
+	Type    LogType
+	Message string
+}
+
 // Defines the state space of the Bubbletea TUI
 type model struct {
 	pipelines          *pipelines.Pipelines
@@ -58,7 +71,7 @@ type model struct {
 	processingComplete bool
 	resultFilePath     string
 	launchUIPrompt     textinput.Model
-	logs               []string
+	logs               []LogEntry
 	width              int
 	height             int
 }
@@ -79,14 +92,17 @@ func (m model) reset() model {
 }
 
 // Defines the initial state of the TUI
-func NewModel(pipelines *pipelines.Pipelines) model {
+func NewModel(pipelines *pipelines.Pipelines, initialLogs []string) model {
 	m := model{
 		inputs:    make([]textinput.Model, 3),
-		logs:      make([]string, 0),
+		logs:      make([]LogEntry, 0),
 		pipelines: pipelines,
 	}
 
-	m.logMessage("Welcome! Enter a stock ticker to begin analysis.")
+	for _, msg := range initialLogs {
+		m.logInfo(msg)
+	}
+	m.logInfo("Welcome! Enter a stock ticker to begin analysis.")
 
 	m.spinner = spinner.New()
 	m.spinner.Spinner = spinner.Dot
@@ -129,11 +145,23 @@ func NewModel(pipelines *pipelines.Pipelines) model {
 	return m
 }
 
-func (m *model) logMessage(msg string) {
-	m.logs = append(m.logs, msg)
+func (m *model) log(entry LogEntry) {
+	m.logs = append(m.logs, entry)
 	if len(m.logs) > maxLogMessages {
 		m.logs = m.logs[1:]
 	}
+}
+
+func (m *model) logInfo(msg string) {
+	m.log(LogEntry{Type: InfoLog, Message: msg})
+}
+
+func (m *model) logSuccess(msg string) {
+	m.log(LogEntry{Type: SuccessLog, Message: msg})
+}
+
+func (m *model) logError(msg string) {
+	m.log(LogEntry{Type: ErrorLog, Message: msg})
 }
 
 func (m model) Init() tea.Cmd {
@@ -153,7 +181,7 @@ func (m model) processDataCmd() tea.Msg {
 	ticker := m.inputs[0].Value()
 	startDate := m.inputs[1].Value()
 	endDate := m.inputs[2].Value()
-	m.logMessage(fmt.Sprintf("Fetching data for %s...", ticker))
+	m.logInfo(fmt.Sprintf("Fetching data for %s...", ticker))
 	lynchFairValueInputs := pipelines.LynchFairValueInputs{
 		Ticker:    ticker,
 		StartDate: startDate,
@@ -194,7 +222,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.processingComplete = true
 		m.resultFilePath = msg.filePath
 		for _, log := range msg.logs {
-			m.logMessage(log)
+			m.logSuccess(log)
 		}
 		cmd = m.launchUIPrompt.Focus()
 		return m, cmd
@@ -202,12 +230,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case processErrorMsg:
 		m.loading = false
 		m.err = msg.err
-		m.logMessage(fmt.Sprintf("Error: %v", msg.err))
+		m.logError(fmt.Sprintf("Error: %v", msg.err))
 
 		return m, nil
 
 	case webUILaunchedMsg:
-		m.logMessage(fmt.Sprintf("Web server running at %s. Open browser to:", msg.url))
+		m.logInfo(fmt.Sprintf("Web server running at %s. Open browser to:", msg.url))
 		return m, nil
 
 	case tea.KeyMsg:
@@ -272,10 +300,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // --- Bubbletea View ---
 func (m model) View() string {
-	// Define pane widths
 	paneWidth := m.width / 2
 
-	// --- Left Pane: The Form ---
+	// --- Left Pane Form
 	var form strings.Builder
 	for i := range m.inputs {
 		form.WriteString(m.inputs[i].View() + "\n")
@@ -300,7 +327,7 @@ func (m model) View() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("63"))
 
-	// --- Right Pane: The Logs ---
+	// --- Right Pane Logs
 	logHeader := lipgloss.NewStyle().
 		Padding(0, 1).
 		Bold(true).
@@ -313,7 +340,18 @@ func (m model) View() string {
 	if len(m.logs) > availableHeight {
 		start = len(m.logs) - availableHeight
 	}
-	logContent := strings.Join(m.logs[start:], "\n")
+	var styledLogs []string
+	for _, logEntry := range m.logs[start:] {
+		switch logEntry.Type {
+		case SuccessLog:
+			styledLogs = append(styledLogs, successMessageStyle.Render(logEntry.Message))
+		case ErrorLog:
+			styledLogs = append(styledLogs, errorMessageStyle.Render(logEntry.Message))
+		default:
+			styledLogs = append(styledLogs, logEntry.Message)
+		}
+	}
+	logContent := strings.Join(styledLogs, "\n")
 
 	logPaneStyle := lipgloss.NewStyle().
 		Padding(1, 2).

@@ -46,16 +46,14 @@ func processCmd(m model, cmd tea.Cmd) model {
 }
 
 // Helper to check if any log message contains a specific substring.
-func containsLog(logs []string, substr string) bool {
+func containsLog(logs []LogEntry, substr string) bool {
 	for _, log := range logs {
-		if strings.Contains(log, substr) {
+		if strings.Contains(log.Message, substr) {
 			return true
 		}
 	}
 	return false
 }
-
-// --- Tests ---
 
 // Given a user who fills out the form and submits it successfully,
 // verify that the TUI calls the pipeline and logs the success messages.
@@ -64,12 +62,11 @@ func TestTUI_HappyPath_Success(t *testing.T) {
 		outputToReturn: &pipelines.LynchFairValueOutputs{
 			RecordCount: 13,
 			FilePath:    "NVDA.parquet",
-			// This now mimics the message from io.WriteCombinedPriceDataToParquet
-			Logs: []string{"Successfully wrote 13 combined records to Parquet file"},
+			Logs:        []string{"Successfully wrote 13 combined records to Parquet file"},
 		},
 	}
 	rootPipelines := &pipelines.Pipelines{LynchFairValue: mockPipeline}
-	m := NewModel(rootPipelines)
+	m := NewModel(rootPipelines, nil)
 	var cmd tea.Cmd
 
 	// Simulate typing a ticker.
@@ -131,7 +128,7 @@ func TestTUI_HappyPath_Success(t *testing.T) {
 func TestTUI_PipelineError(t *testing.T) {
 	mockPipeline := &mockFairValuePipeline{shouldReturnErr: true}
 	rootPipelines := &pipelines.Pipelines{LynchFairValue: mockPipeline}
-	m := NewModel(rootPipelines)
+	m := NewModel(rootPipelines, nil)
 	var cmd tea.Cmd
 
 	// Simulate typing a ticker and submitting the form.
@@ -163,3 +160,27 @@ func TestTUI_PipelineError(t *testing.T) {
 		t.Errorf("Expected logs to contain '%s', but they did not. Logs: %v", expectedErrorText, m.logs)
 	}
 }
+
+// Given a set of initial logs passed to the constructor,
+// verify that they are present in the model's state immediately.
+func TestTUI_InitialLogs(t *testing.T) {
+	initialLogs := []string{
+		"Using mock API.",
+		"Config loaded successfully.",
+	}
+
+	m := NewModel(nil, initialLogs)
+
+	if len(m.logs) < len(initialLogs) {
+		t.Fatalf("Expected at least %d initial logs, but got %d", len(initialLogs), len(m.logs))
+	}
+
+	if !containsLog(m.logs, "Using mock API.") {
+		t.Error("Expected logs to contain 'Using mock API.'")
+	}
+	if !containsLog(m.logs, "Config loaded successfully.") {
+		t.Error("Expected logs to contain 'Config loaded successfully.'")
+	}
+}
+
+// todo test log styles in the Logs pane

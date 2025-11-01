@@ -1,57 +1,27 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
-const dailyPriceJSON = `
-{
-    "Meta Data": {
-        "1. Information": "Mock Daily Prices",
-        "2. Symbol": "MOCK",
-        "3. Last Refreshed": "2025-10-25",
-        "4. Output Size": "Full",
-        "5. Time Zone": "US/Eastern"
-    },
-    "Time Series (Daily)": {
-        "2025-10-25": {
-            "1. open": "150.00",
-            "2. high": "152.00",
-            "3. low": "149.50",
-            "4. close": "151.75",
-            "5. volume": "1000000"
-        },
-        "2025-10-24": {
-            "1. open": "148.00",
-            "2. high": "150.50",
-            "3. low": "147.50",
-            "4. close": "149.90",
-            "5. volume": "1200000"
-        }
-    }
-}
-`
+var (
+	aaplDailyPriceJSON []byte
+	aaplEarningsJSON   []byte
+	aaplSplitsJSON     []byte
+)
 
-const earningsJSON = `
-{
-    "symbol": "MOCK",
-    "annualEarnings": [
-        {
-            "fiscalDateEnding": "2024-12-31",
-            "reportedEPS": "12.50"
-        },
-        {
-            "fiscalDateEnding": "2023-12-31",
-            "reportedEPS": "10.00"
-        }
-    ],
-    "quarterlyEarnings": []
+// A helper function to read a file and exit fatally if it fails, as the mock server that can't run without its data.
+func loadJSONData(filePath string) []byte {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Fatalf("Failed to read mock data file %s: %v", filePath, err)
+	}
+	return data
 }
-`
 
-// Mimics the Alpha Vantage /query endpoint and its various functions and symbols params
+// Mimics the Alpha Vantage /query endpoint.
 func queryHandler(w http.ResponseWriter, r *http.Request) {
 	function := r.URL.Query().Get("function")
 	symbol := r.URL.Query().Get("symbol")
@@ -60,25 +30,46 @@ func queryHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	if symbol != "AAPL" {
+		log.Printf("Unsupported symbol requested: %s", symbol)
+		http.Error(w, `{"error": "Unsupported mock symbol. Only AAPL is available."}`, http.StatusBadRequest)
+		return
+	}
+
+	var responseData []byte
+
 	switch function {
 	case "TIME_SERIES_DAILY":
-		fmt.Fprint(w, dailyPriceJSON)
+		responseData = aaplDailyPriceJSON
 	case "EARNINGS":
-		fmt.Fprint(w, earningsJSON)
+		responseData = aaplEarningsJSON
+	case "SPLITS":
+		responseData = aaplSplitsJSON
 	default:
 		log.Printf("Unknown function requested: %s", function)
 		http.Error(w, `{"error": "Unknown function"}`, http.StatusBadRequest)
+		return
+	}
+
+	_, err := w.Write(responseData)
+	if err != nil {
+		log.Printf("Error writing response: %v", err)
 	}
 }
 
 func main() {
+	log.Println("Loading mock data from files...")
+	aaplDailyPriceJSON = loadJSONData("tools/mock_alpha_vantage_api/data/AAPL_TIME_SERIES_DAILY.json")
+	aaplEarningsJSON = loadJSONData("tools/mock_alpha_vantage_api/data/AAPL_EARNINGS.json")
+	aaplSplitsJSON = loadJSONData("tools/mock_alpha_vantage_api/data/AAPL_SPLITS.json")
+	log.Println("Mock data loaded successfully.")
+
 	http.HandleFunc("/query", queryHandler)
 
 	port := "8080"
 	log.Printf("Starting mock API server on http://localhost:%s", port)
 	log.Println("Press Ctrl+C to shut down.")
 
-	// This is a blocking call that starts the server.
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
