@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Stock Price Analysis</title>
+    <title>Cibo</title>
     <!-- The path is relative to the server root 'static' dir -->
     <script src="/js/plotly.min.js"></script>
     <style>
@@ -41,13 +41,19 @@
                 });
 
                 const layout = {
-                    title: `Price Analysis for ${data[0].Ticker}`,
+                    title: {
+                        text: `Lynch Fair Value analysis for ${data[0].Ticker}`,
+                        y: 0.98,
+                        yref: 'container',
+                        yanchor: 'top'
+                    },
                     xaxis: { title: 'Date' },
                     yaxis: { title: 'Price (USD)', tickprefix: '$' },
-                    margin: { l: 50, r: 50, b: 50, t: 50, pad: 4 }
+                    margin: { t: 100 }
                 };
 
-                Plotly.newPlot('chart', [actualPrices, fairValue], layout, {responsive: true});
+
+                Plotly.newPlot('chart', [actualPrices, fairValue], layout);
             })
             .catch(error => {
                 console.error('Error fetching chart data:', error);
