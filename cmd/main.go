@@ -21,7 +21,7 @@ const (
 )
 
 func main() {
-	webModeFilePath := flag.String("webMode", "", "Path to a Parquet file to display in standalone web mode.")
+	webModeFilePath := flag.String("webMode", "", "Arg to display in standalone web mode, followed by the path to a Parquet file .")
 	useMockAPI := flag.Bool("mockAPI", false, "Use the mock API server.")
 	flag.Parse()
 
