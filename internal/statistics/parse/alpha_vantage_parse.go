@@ -12,13 +12,14 @@ import (
 
 /*
 Parsing module to handle data structures coming back from AlphaVantage.
-Hard tied to their data structures, any changes to their API will
-require changes here too.
+Hard coded to their data structures, any changes to their API will
+be mapped here.
 */
 
 type DailyPricesResponse struct {
-	MetaData   MetaDataContainer         `json:"Meta Data"`
-	TimeSeries map[string]DailyDataPoint `json:"Time Series (Daily)"`
+	MetaData    MetaDataContainer         `json:"Meta Data"`
+	TimeSeries  map[string]DailyDataPoint `json:"Time Series (Daily)"`
+	Information string                    `json:"Information"`
 }
 
 type MetaDataContainer struct {
@@ -38,6 +39,10 @@ func ParseDailyPricesToFlat(jsonData []byte, skipErrors bool) ([]types.DailyStoc
 
 	if err := json.Unmarshal(jsonData, &response); err != nil {
 		return nil, fmt.Errorf("error unmarshaling json: %w", err)
+	}
+
+	if response.Information != "" {
+		return nil, fmt.Errorf("%s", response.Information)
 	}
 
 	ticker := response.MetaData.Symbol

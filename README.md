@@ -8,11 +8,12 @@ which seemed like an occasionally useful visualization to have. Added onto this 
 
 Remember: all models are wrong, but some are useful.
 
-## Terminal UI based
+## Terminal UI based data pipeline
 
-Built on GO, Bubbletea, and plotly.js for the web UI, CIBO is a terminal first application for analyzing stock data.
+Built on GO and Bubbletea TUI library, CIBO is a terminal first application for analyzing stock data and producing data sets (currently stored in parquet) for larger analysis needs in other applications like Libre Calc or Sheets.
 
 ![TUI](./docs/images/tui.png)
+![web-ui](./docs/images/cibo_react.png)
 
 Currently implemented features:
 
@@ -23,6 +24,11 @@ Future pipelines
 - Price to Sales fair value analysis
 - Dividend dates (past and future)
 - Upcoming earnings call calendar event generator
+- Schiller PE overlay
+
+## Sample data
+
+Examples of produced data sets can be found in the directory `/sample_data/`.
 
 ## Needed for local building and development
 

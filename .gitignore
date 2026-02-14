@@ -1,4 +1,15 @@
 internal/statistics/keys/*
-
-# plotly js installed during container build
-internal/web/static/js/plotly.min.js
+*/node_modules/*
+internal/web/dist/assets/*
+/bin/*
+coverage/
+__pycache__/
+*.pyc
+internal/statistics/keys/*
+!internal/statistics/keys/.gitkeep
+.env
+.env.*
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

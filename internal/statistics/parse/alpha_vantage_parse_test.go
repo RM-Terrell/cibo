@@ -11,7 +11,7 @@ import (
 )
 
 // Given valid json data, verify that the parse function returns a correctly sorted collection of prices.
-func TestParseDailyToFloatHappyPath(t *testing.T) {
+func TestParseDailyToFlatHappyPath(t *testing.T) {
 	const (
 		ticker      = "IBM"
 		date1       = "2025-08-01"
@@ -53,7 +53,7 @@ func TestParseDailyToFloatHappyPath(t *testing.T) {
 }
 
 // Given malformed json data, verify that the parser returns an error
-func TestMalformedJsonParseDailyToFloat(t *testing.T) {
+func TestMalformedJsonParseDailyToFlat(t *testing.T) {
 	jsonData := []byte(`{ "Meta Data": "invalid }`)
 	_, err := ParseDailyPricesToFlat(jsonData, false)
 	if err == nil {
@@ -174,7 +174,7 @@ func TestParseAnnualHappyPath(t *testing.T) {
 		eps2Float = 4.15
 	)
 
-	jsonData := []byte(fmt.Sprintf(`{
+	jsonData := fmt.Appendf(nil, `{
 			"symbol": "%s",
 			"annualEarnings": [
 				{
@@ -186,7 +186,7 @@ func TestParseAnnualHappyPath(t *testing.T) {
 					"reportedEPS": "%s"
 				}
 			]
-		}`, ticker, date1, eps1Str, date2, eps2Str))
+		}`, ticker, date1, eps1Str, date2, eps2Str)
 
 	expected := []types.AnnualEarningRecord{
 		{Ticker: ticker, FiscalDateEnding: date1, ReportedEPS: eps1Float},
@@ -236,12 +236,12 @@ func TestParseAnnualMissingTicker(t *testing.T) {
 // Given a non-numeric EPS with strict error mode, should return a parsing error
 func TestParseAnnualNonNumericStrict(t *testing.T) {
 	const ticker = "IBM"
-	jsonData := []byte(fmt.Sprintf(`{
+	jsonData := fmt.Appendf(nil, `{
 			"symbol": "%s",
 			"annualEarnings": [
 				{ "fiscalDateEnding": "2025-06-30", "reportedEPS": "N/A" }
 			]
-		}`, ticker))
+		}`, ticker)
 
 	_, err := ParseAnnualEarningsToFlat(jsonData, false)
 	if err == nil {
@@ -255,10 +255,10 @@ func TestParseAnnualNonNumericStrict(t *testing.T) {
 // Given json with an empty annualEarnings array, should return an empty slice
 func TestParseAnnualEmpty(t *testing.T) {
 	const ticker = "GOOG"
-	jsonData := []byte(fmt.Sprintf(`{
+	jsonData := fmt.Appendf(nil, `{
 			"symbol": "%s",
 			"annualEarnings": []
-		}`, ticker))
+		}`, ticker)
 
 	records, err := ParseAnnualEarningsToFlat(jsonData, false)
 	if err != nil {
@@ -280,14 +280,14 @@ func TestParseAnnualNonNumericPermissive(t *testing.T) {
 		goodDate2 = "2023-06-30"
 		goodEps2  = "10.25"
 	)
-	jsonData := []byte(fmt.Sprintf(`{
+	jsonData := fmt.Appendf(nil, `{
 			"symbol": "%s",
 			"annualEarnings": [
 				{ "fiscalDateEnding": "%s", "reportedEPS": "%s" },
 				{ "fiscalDateEnding": "%s", "reportedEPS": "None" },
 				{ "fiscalDateEnding": "%s", "reportedEPS": "%s" }
 			]
-		}`, ticker, goodDate1, goodEps1, badDate, goodDate2, goodEps2))
+		}`, ticker, goodDate1, goodEps1, badDate, goodDate2, goodEps2)
 
 	expected := []types.AnnualEarningRecord{
 		{Ticker: ticker, FiscalDateEnding: goodDate1, ReportedEPS: 12.50},
@@ -319,14 +319,14 @@ func TestParseStockSplitsHappyPath(t *testing.T) {
 		factor3Num = 0.1
 	)
 
-	jsonData := []byte(fmt.Sprintf(`{
+	jsonData := fmt.Appendf(nil, `{
 		"symbol": "%s",
 		"data": [
 			{ "effective_date": "%s", "split_factor": "%s" },
 			{ "effective_date": "%s", "split_factor": "%s" },
 			{ "effective_date": "%s", "split_factor": "%s" }
 		]
-	}`, ticker, date1, factor1Str, date2, factor2Str, date3, factor3Str))
+	}`, ticker, date1, factor1Str, date2, factor2Str, date3, factor3Str)
 
 	expected := []types.StockSplitRecord{
 		{Ticker: ticker, EffectiveDate: date1, SplitFactor: factor1Num},
@@ -377,10 +377,10 @@ func TestParseStockSplitsMissingSymbol(t *testing.T) {
 // Given valid json with an empty data array, verify that an empty slice is returned.
 func TestParseStockSplitsEmptyData(t *testing.T) {
 	const ticker = "RKLB"
-	jsonData := []byte(fmt.Sprintf(`{
+	jsonData := fmt.Appendf(nil, `{
 		"symbol": "%s",
 		"data": []
-	}`, ticker))
+	}`, ticker)
 
 	records, err := ParseStockSplitsToFlat(jsonData)
 	if err != nil {
@@ -402,14 +402,14 @@ func TestParseStockSplitsSkipsBadFactor(t *testing.T) {
 		goodDate2   = "2022-01-01"
 		goodFactor2 = "3.0"
 	)
-	jsonData := []byte(fmt.Sprintf(`{
+	jsonData := fmt.Appendf(nil, `{
 		"symbol": "%s",
 		"data": [
 			{ "effective_date": "%s", "split_factor": "%s" },
 			{ "effective_date": "%s", "split_factor": "two-for-one" },
 			{ "effective_date": "%s", "split_factor": "%s" }
 		]
-	}`, ticker, goodDate1, goodFactor, badDate, goodDate2, goodFactor2))
+	}`, ticker, goodDate1, goodFactor, badDate, goodDate2, goodFactor2)
 
 	expected := []types.StockSplitRecord{
 		{Ticker: ticker, EffectiveDate: goodDate1, SplitFactor: 2.0},
@@ -423,5 +423,21 @@ func TestParseStockSplitsSkipsBadFactor(t *testing.T) {
 
 	if diff := cmp.Diff(expected, records); diff != "" {
 		t.Errorf("ParseStockSplitsToFlat() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestParseDailyToFlatInfoMessage(t *testing.T) {
+	message := "you smashed our API too much"
+	jsonData := fmt.Appendf(nil, `{ "Information": "%s" }`, message)
+	records, err := ParseDailyPricesToFlat(jsonData, false)
+
+	if records != nil {
+		t.Fatal("Expected no records returned when receiving an 'Information' message")
+	}
+	if err == nil {
+		t.Fatal("Expected an error when receiving an 'Information' message but got nil")
+	}
+	if diff := cmp.Diff(message, err.Error()); diff != "" {
+		t.Errorf("Info message mismatch (-want +got):\n%s", diff)
 	}
 }
