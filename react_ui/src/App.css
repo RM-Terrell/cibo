@@ -1,0 +1,28 @@
+.app-body {
+  display: flex;
+  flex: 1;
+}
+
+.main-content {
+  flex: 1;
+  padding: 1rem;
+  transition: margin-left 0.3s ease;
+  margin-left: 250px;
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 50px;
+}
+
+.chart-header h2 {
+  margin: 0 0 1rem 0;
+  font-weight: 500;
+  color: #333;
+}
+
+.error-message {
+  color: #c0392b;
+  background-color: #fadbd8;
+  padding: 1rem;
+  border-radius: 4px;
+}

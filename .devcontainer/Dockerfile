@@ -1,3 +1,4 @@
+FROM node:25-bookworm-slim AS node_base
 FROM debian:stable-slim
 
 ARG GO_VERSION=1.24.0
@@ -34,6 +35,10 @@ RUN go install golang.org/x/tools/gopls@latest \
     && go install github.com/go-delve/delve/cmd/dlv@latest
 
 RUN rm -rf /var/lib/apt/lists/*
+
+# copying over binaries from the node_base image instead of manually managing them
+COPY --from=node_base /usr/local/bin /usr/local/bin
+COPY --from=node_base /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 RUN useradd -ms /bin/bash vscode
 # need to provide perms on /go or else vscode go extensions wont work

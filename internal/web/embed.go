@@ -8,5 +8,5 @@ import "embed"
   https://pkg.go.dev/embed
 */
 
-//go:embed all:static
+//go:embed all:dist
 var EmbeddedFiles embed.FS

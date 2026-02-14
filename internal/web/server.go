@@ -2,7 +2,6 @@ package web
 
 import (
 	"cibo/internal/statistics/io"
-
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -26,18 +26,40 @@ func PrepareListener() (net.Listener, string, error) {
 	return listener, url, nil
 }
 
+type spaHandler struct {
+	staticFS  fs.FS
+	indexPath string
+}
+
+func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	if path == "/" {
+		path = h.indexPath
+	}
+	path = strings.TrimPrefix(path, "/")
+
+	_, err := fs.Stat(h.staticFS, path)
+	if os.IsNotExist(err) {
+		http.ServeFileFS(w, r, h.staticFS, h.indexPath)
+		return
+	} else if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	http.ServeFileFS(w, r, h.staticFS, path)
+}
+
 // Method to handle shared server setup code
 func newServerHandler(filePath string) http.Handler {
-	staticFS, err := fs.Sub(EmbeddedFiles, "static")
+	staticFS, err := fs.Sub(EmbeddedFiles, "dist")
 	if err != nil {
-		// Using panic here because if embedded files are broken, the app can't run.
 		log.Panicf("Failed to create sub-filesystem: %v", err)
 	}
 
 	parquetClient := io.NewParquetClient()
 
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
 		records, err := parquetClient.ReadCombinedPriceDataFromParquet(filePath)
 		if err != nil {
@@ -49,23 +71,23 @@ func newServerHandler(filePath string) http.Handler {
 		json.NewEncoder(w).Encode(records)
 	})
 
+	mux.Handle("/", spaHandler{staticFS: staticFS, indexPath: "index.html"})
+
 	return mux
 }
 
-// StartNonBlocking starts the web server in a goroutine for use with the TUI.
+// StartNonBlocking and StartServer remain the same...
 func StartNonBlocking(listener net.Listener, filePath string) {
 	handler := newServerHandler(filePath)
 	server := &http.Server{Handler: handler}
 
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			// Since this is a background task, we log the error instead of fatally exiting.
 			log.Printf("ERROR: Non-blocking web server failed: %v", err)
 		}
 	}()
 }
 
-// StartServer starts the web server and blocks, handling graceful shutdown.
 func StartServer(listener net.Listener, filePath string) {
 	handler := newServerHandler(filePath)
 	server := &http.Server{Handler: handler}
